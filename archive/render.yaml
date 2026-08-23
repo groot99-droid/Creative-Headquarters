@@ -1,0 +1,83 @@
+services:
+  - type: pserv
+    name: living-archive-postgres
+    runtime: docker
+    image: postgres:15-alpine
+    envVars:
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: POSTGRES_DB
+        value: living_archive
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+
+  - type: pserv
+    name: living-archive-neo4j
+    runtime: docker
+    image: neo4j:5-community
+    envVars:
+      - key: NEO4J_AUTH
+        value: neo4j/password
+    disk:
+      name: neo4j-data
+      mountPath: /data
+      sizeGB: 10
+
+  - type: pserv
+    name: living-archive-redis
+    runtime: docker
+    image: redis:7-alpine
+
+  - type: web
+    name: living-archive-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: POSTGRES_SERVER
+        fromService:
+          name: living-archive-postgres
+          type: pserv
+          property: host
+      - key: POSTGRES_PASSWORD
+        fromService:
+          name: living-archive-postgres
+          type: pserv
+          envVarKey: POSTGRES_PASSWORD
+      - key: NEO4J_URI
+        fromService:
+          name: living-archive-neo4j
+          type: pserv
+          property: host
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: living-archive-redis
+          type: pserv
+          property: host
+        value: redis://redis:6379/0
+
+  - type: web
+    name: living-archive-frontend
+    runtime: docker
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+
+  - type: worker
+    name: living-archive-celery
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: celery -A app.tasks.reorganization worker --loglevel=info
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CELERY_BROKER_URL
+        value: redis://redis:6379/0
