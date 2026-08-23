@@ -17,11 +17,12 @@ This file is not documentation. It is an **execution contract**. When this file 
 ## 1. SYSTEM TOPOLOGY
 
 ```
-/studio-os/
+Creative-Headquarters/
 ├── Router.md                ← YOU ARE HERE (logic bridge, read first, every task)
 ├── dashboard.json           ← Live system state (read at task start, write at every phase change)
 ├── control_room.html        ← Human UI (renders dashboard.json)
 ├── router.js                ← UI logic bridge (fetch → DOM → API routing stubs)
+├── DECISIONS.md             ← Architecture decisions in force
 ├── /skills/                 ← 8 executable skill files (Four-Part Artifact Architecture)
 │   ├── higgsfield_api.skill.md
 │   ├── suno_audio.skill.md
@@ -31,12 +32,18 @@ This file is not documentation. It is an **execution contract**. When this file 
 │   ├── css_html_ui.skill.md
 │   ├── local_rag_orchestration.skill.md
 │   └── hardware_compute.skill.md
-└── /context/                ← 10 creative-theory files (loaded BY ROUTE, never skipped)
-    ├── visual_identity.context.md      ├── motion_language.context.md
-    ├── sound_identity.context.md       ├── narrative_continuity.context.md
-    ├── color_science.context.md        ├── typography_system.context.md
-    ├── render_philosophy.context.md    ├── brand_voice.context.md
-    ├── pipeline_ethics.context.md      └── memory_discipline.context.md
+├── /context/
+│   ├── /brand/              ← 10 MANDATORY gate files (§3). NOT YET AUTHORED — see brand/README.md
+│   │   └── README.md            Router blocks per §4 until these exist. This is correct behavior.
+│   └── /domain/             ← 10 reference libraries (worldbuilding, cinematography, …)
+│                                Retrievable material. NOT substitutes for /brand/.
+├── /agents/                 ← 9 sub-executor definitions (debugger, code-reviewer, …)
+├── /tools/
+│   └── /brush-designer/     ← Procreate brush generator. DOM-free core in editor/ + generators/
+│                                + export/; UI in ui/ + panels/. Not yet routed — see DECISIONS.md.
+└── /archive/                ← Living Archive Engine (self-learning memory layer)
+    ├── /backend/app/            FastAPI + classification core + graph/vector stores
+    └── /frontend/src/           React + d3 knowledge-graph UI
 ```
 
 ---
@@ -94,6 +101,12 @@ Independently of what the user *says*, inspect what the task *touches*:
 | `css_html_ui` | `typography_system`, `visual_identity`, `brand_voice` | — |
 | `local_rag_orchestration` | `memory_discipline` | `pipeline_ethics` |
 | `hardware_compute` | `pipeline_ethics`, `render_philosophy` | — |
+
+**Path resolution:** every name in the two right-hand columns resolves to
+`context/brand/<name>.context.md`. These are brand constants — the files in
+`context/domain/` have different names and a different job, and never satisfy a
+mandatory slot. None of the ten exist yet, so per §4 and §7 every route currently
+halts with `blocked` and the missing filename logged. See `context/brand/README.md`.
 
 Multi-skill tasks: union all mandatory context sets, load once, deduplicate.
 
