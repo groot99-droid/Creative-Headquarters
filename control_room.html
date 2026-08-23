@@ -145,6 +145,8 @@
   .ctx-row:last-child { border-bottom: 0; }
   .ctx-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--queued); }
   .ctx-row.on .dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .ctx-row.missing .dot { background: var(--alert); box-shadow: 0 0 8px var(--alert); }
+  .ctx-row.missing .f { color: var(--alert); }
   .ctx-row .f { font-size: 11.5px; color: var(--ink-dim); word-break: break-all; }
   .ctx-row.on .f { color: var(--ink); }
   .ctx-row .r { font-size: 10.5px; letter-spacing: 0.04em; word-break: break-all; }
@@ -194,7 +196,7 @@
     </section>
 
     <section class="panel ctx" aria-label="Context attestation">
-      <h2>Context Attestation <span class="tick" id="ctx-violations">—</span></h2>
+      <h2>Brand Gates <span class="tick" id="ctx-violations">—</span></h2>
       <div id="ctx-list"><!-- rows injected by router.js --></div>
     </section>
 

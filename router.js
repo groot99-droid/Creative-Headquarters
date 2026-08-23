@@ -191,21 +191,24 @@ function renderSkills(skills = []) {
 /* Router.md §4 requires the attestation to be visible to the operator, not just
    asserted in chat. This panel is that readout. */
 function renderContext(d) {
-  const loaded = d.system_status?.context_loaded ?? [];
-  const files = d.registries?.context_files ?? [];
+  const gates = d.registries?.context_brand_gates ?? [];
+  const loaded = new Set(d.system_status?.context_loaded ?? []);
   const violations = d.system_status?.intercept_violations_24h ?? 0;
+  const missing = gates.filter(g => !g.authored).length;
 
-  $("ctx-violations").innerHTML = violations > 0
-    ? `<span class="c-alert">${esc(violations)} intercept violation${violations === 1 ? "" : "s"} / 24h</span>`
-    : `<span class="c-cyan">0 violations / 24h</span>`;
+  $("ctx-violations").innerHTML = missing > 0
+    ? `<span class="c-alert">${esc(missing)} of ${gates.length} gates unauthored</span>`
+    : (violations > 0
+        ? `<span class="c-alert">${esc(violations)} intercept violation${violations === 1 ? "" : "s"} / 24h</span>`
+        : `<span class="c-cyan">all gates authored · 0 violations / 24h</span>`);
 
-  const loadedFiles = new Set(resolveContext(null, loaded));
-  $("ctx-list").innerHTML = files.map(f => {
-    const on = loadedFiles.has(f.file);
-    return `<div class="ctx-row ${on ? "on" : ""}">
+  $("ctx-list").innerHTML = gates.map(g => {
+    const on = g.authored && loaded.has(g.role);
+    const cls = g.authored ? (on ? "on" : "") : "missing";
+    return `<div class="ctx-row ${cls}">
       <span class="dot"></span>
-      <span class="f">${esc(f.file)}</span>
-      <span class="r c-dim">${esc((f.roles ?? []).join(", "))}</span>
+      <span class="f">${esc(brandPath(g.role))}</span>
+      <span class="r c-dim">${g.authored ? esc((g.gates_skills ?? []).join(", ")) : "not authored — blocks route"}</span>
     </div>`;
   }).join("");
 }
@@ -222,66 +225,49 @@ function formatTime(iso) {
 
 async function routeSkill(skillFile) {
   console.info(`[router] intercept engaged → ${skillFile}`);
-  const roles = resolveRoles(skillFile);
-  const files = resolveContext(skillFile, roles);
+  const gates = resolveGates(skillFile);
+  const paths = gates.map(brandPath);
 
-  // Router.md §7: the Router never invents context. If a mapped role resolves to
-  // nothing, that is a BLOCKED route, not a route with less context.
-  const unbound = roles.filter(r => contextRoleMap()[r] === undefined);
-  if (unbound.length) {
-    logLocal("ROUTE_BLOCKED", `${skillFile} → unbound context roles: ${unbound.join(", ")}`);
-    console.error(`[router] unbound context roles for ${skillFile}:`, unbound);
-    return { ok: false, blocked: true, unbound };
+  // Router.md §7: a mandatory gate that is not authored BLOCKS the route. It is never
+  // satisfied by a context/domain/ library — those are retrieval material, and a general
+  // treatise says nothing about this studio's brand. See context/brand/README.md.
+  const missing = gates.filter(g => !isAuthored(g));
+  if (missing.length) {
+    logLocal("ROUTE_BLOCKED", `${skillFile} → unauthored brand gates: ${missing.join(", ")}`);
+    console.warn(`[router] blocked; author these first:`, missing.map(brandPath));
+    return { ok: false, blocked: true, missing: missing.map(brandPath) };
   }
 
-  console.info(`[router] roles: ${roles.join(", ")} → files:`, files);
+  console.info(`[router] gates satisfied:`, paths);
   // TODO: POST to local agent runner, e.g.
-  // await dispatchAPICall("agent", "/route", { skill: skillFile, roles, files });
-  logLocal("INTERCEPT", `UI-initiated route → ${skillFile} · context: ${files.join(", ")} (stub)`);
-  return { ok: true, skill: skillFile, roles, files };
+  // await dispatchAPICall("agent", "/route", { skill: skillFile, gates, paths });
+  logLocal("INTERCEPT", `UI-initiated route → ${skillFile} · context: ${paths.join(", ")} (stub)`);
+  return { ok: true, skill: skillFile, gates, paths };
 }
 
-/* Skill → mandatory context ROLES. Mirror of Router.md §3.
-   Roles are abstract; they only become files through the binding map below. */
-function resolveRoles(skillFile) {
+/* Skill → mandatory context gates. Mirror of Router.md §3. */
+function resolveGates(skillFile) {
   const table = {
-    "higgsfield_api.skill.md":          ["motion_language", "narrative_continuity", "visual_identity"],
-    "suno_audio.skill.md":              ["sound_identity", "brand_voice"],
-    "adobe_firefly.skill.md":           ["visual_identity", "color_science"],
-    "adobe_suite_uxp.skill.md":         ["render_philosophy", "color_science", "system_fabric"],
-    "blender_python.skill.md":          ["render_philosophy", "motion_language"],
-    "css_html_ui.skill.md":             ["typography_system", "visual_identity", "brand_voice", "system_fabric"],
-    "local_rag_orchestration.skill.md": ["memory_discipline"],
-    "hardware_compute.skill.md":        ["pipeline_ethics", "render_philosophy"],
+    "skills/higgsfield_api.skill.md":          ["motion_language", "narrative_continuity", "visual_identity"],
+    "skills/suno_audio.skill.md":              ["sound_identity", "brand_voice"],
+    "skills/adobe_firefly.skill.md":           ["visual_identity", "color_science"],
+    "skills/adobe_suite_uxp.skill.md":         ["render_philosophy", "color_science"],
+    "skills/blender_python.skill.md":          ["render_philosophy", "motion_language"],
+    "skills/css_html_ui.skill.md":             ["typography_system", "visual_identity", "brand_voice"],
+    "skills/local_rag_orchestration.skill.md": ["memory_discipline"],
+    "skills/hardware_compute.skill.md":        ["pipeline_ethics", "render_philosophy"],
   };
   return table[skillFile] || [];
 }
 
-/* The role → real-file binding lives in dashboard.json (registries.context_roles),
-   so the protocol has exactly one source of truth. The literal below is only a
-   cold-start fallback for when the dashboard has not been fetched yet. */
-function contextRoleMap() {
-  return STATE?.registries?.context_roles ?? {
-    visual_identity:      ["classical_illustration_context.md"],
-    motion_language:      ["cinematic_videography_context.md"],
-    sound_identity:       ["music_ambience_context.md"],
-    narrative_continuity: ["creative_analytical_writing_context.md", "world_building_context.md"],
-    color_science:        ["classical_illustration_context.md", "cinematic_videography_context.md"],
-    typography_system:    ["typography_ad_arts_context.md"],
-    render_philosophy:    ["digital_3d_motion_context.md"],
-    brand_voice:          ["social_media_marketing_context.md"],
-    system_fabric:        ["multimedia_fusion_context.md"],
-    pipeline_ethics:      ["ai_creative_strategies_context.md"],
-    memory_discipline:    ["ai_creative_strategies_context.md"],
-  };
-}
+/* Router.md §3 path resolution — a gate is always context/brand/<name>.context.md. */
+const brandPath = (role) => `context/brand/${role}.context.md`;
 
-/* Resolve roles to a deduplicated list of real files on disk.
-   Pass skillFile=null to resolve an explicit role list (used by the context panel). */
-function resolveContext(skillFile, roles = null) {
-  const map = contextRoleMap();
-  const wanted = roles ?? resolveRoles(skillFile);
-  return [...new Set(wanted.flatMap(r => map[r] ?? []))];
+/* Authored state lives in dashboard.json so the UI reflects reality rather than a
+   second hard-coded list. Unknown role → not authored → blocked (fail closed). */
+function isAuthored(role) {
+  const gates = STATE?.registries?.context_brand_gates ?? [];
+  return gates.some(g => g.role === role && g.authored === true);
 }
 
 async function dispatchAPICall(service, endpoint, payload) {

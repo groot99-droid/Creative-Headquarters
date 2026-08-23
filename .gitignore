@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# node
+node_modules/
+dist/
+
+# runtime state written by the router
+state/
+.task_scratch/
+
+# os
+.DS_Store

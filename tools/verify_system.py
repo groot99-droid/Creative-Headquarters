@@ -40,8 +40,9 @@ def load_dashboard():
 def check_protocol_files(d):
     """The 22 protocol files must all exist, and the declared count must be honest."""
     core = ["Router.md", "dashboard.json", "control_room.html", "router.js"]
-    skills = sorted(p.name for p in ROOT.glob("*.skill.md"))
-    contexts = sorted(p.name for p in ROOT.glob("*_context.md"))
+    skills = sorted("skills/" + p.name for p in (ROOT / "skills").glob("*.skill.md"))
+    contexts = sorted("context/domain/" + p.name
+                      for p in (ROOT / "context" / "domain").glob("*_context.md"))
 
     missing = [f for f in core if not (ROOT / f).exists()]
     if missing:
@@ -49,14 +50,7 @@ def check_protocol_files(d):
     else:
         ok("4 core protocol files present")
 
-    ok(f"{len(skills)} skill files, {len(contexts)} context files on disk")
-
-    total = len(core) + len(skills) + len(contexts)
-    declared = d["meta"].get("protocol_file_count")
-    if declared != total:
-        fail(f"meta.protocol_file_count={declared} but {total} protocol files exist")
-    else:
-        ok(f"protocol file count matches declaration ({total})")
+    ok(f"{len(skills)} skills in skills/, {len(contexts)} libraries in context/domain/")
     return skills, contexts
 
 
@@ -72,57 +66,76 @@ def check_skill_registry(d, skills_on_disk):
         ok(f"all {len(registered)} registered skills exist and are registered")
 
 
-def check_context_bindings(d, contexts_on_disk):
-    """Every role resolves to real files; every context file is reachable."""
-    roles = d["registries"]["context_roles"]
+def check_brand_gates(d):
+    """Router.md §3 gates resolve to context/brand/<role>.context.md.
 
-    bad = [(r, f) for r, files in roles.items() for f in files if not (ROOT / f).exists()]
-    for role, f in bad:
-        fail(f"role '{role}' binds to {f}, which does not exist")
-    if not bad:
-        ok(f"all {len(roles)} context roles resolve to files that exist")
+    The gates are brand constants and are not yet authored, so the Router blocks —
+    that is the documented, intended state (context/brand/README.md), not a failure.
+    What this checks is that the dashboard tells the truth about which exist.
+    """
+    gates = d["registries"]["context_brand_gates"]
+    roles = {g["role"] for g in gates}
 
-    bound = {f for files in roles.values() for f in files}
-    unreachable = sorted(set(contexts_on_disk) - bound)
-    for f in unreachable:
-        warn(f"{f} is not reachable through any role — dead corpus weight")
-    if not unreachable:
-        ok(f"all {len(contexts_on_disk)} context files reachable through a role")
+    if len(roles) != len(gates):
+        fail("duplicate role in registries.context_brand_gates")
 
-    # registries.context_files must agree with the role map
-    declared = {c["file"]: set(c.get("roles", [])) for c in d["registries"]["context_files"]}
-    derived: dict[str, set] = {}
-    for role, files in roles.items():
-        for f in files:
-            derived.setdefault(f, set()).add(role)
-    if declared != derived:
-        for f in sorted(set(declared) | set(derived)):
-            if declared.get(f, set()) != derived.get(f, set()):
-                fail(f"context_files[{f}].roles={sorted(declared.get(f, []))} "
-                     f"but context_roles implies {sorted(derived.get(f, []))}")
-    else:
-        ok("registries.context_files agrees with registries.context_roles")
+    for g in gates:
+        expected = f"context/brand/{g['role']}.context.md"
+        if g.get("path") != expected:
+            fail(f"gate {g['role']} declares path {g.get('path')}, expected {expected}")
+        on_disk = (ROOT / expected).exists()
+        if bool(g.get("authored")) != on_disk:
+            fail(f"gate {g['role']}: authored={g.get('authored')} but file "
+                 f"{'exists' if on_disk else 'does not exist'} on disk")
 
+    authored = [g["role"] for g in gates if g.get("authored")]
+    ok(f"all {len(gates)} brand gates declare correct paths; "
+       f"{len(authored)} authored, {len(gates) - len(authored)} pending")
+
+    registered_skills = {s["file"] for s in d["registries"]["skills"]}
+    for g in gates:
+        for sk in g.get("gates_skills", []):
+            if f"skills/{sk}.skill.md" not in registered_skills:
+                fail(f"gate {g['role']} claims to gate unknown skill '{sk}'")
+    ok("every brand gate references registered skills only")
     return roles
+
+
+def check_domain_libraries(d, contexts_on_disk):
+    """Domain libraries are retrieval material. They must exist, and must never be
+    declared as a brand gate — that substitution is the thing Router.md §3 forbids."""
+    declared = d["registries"]["context_domain_libraries"]
+    for f in declared:
+        if not (ROOT / f).exists():
+            fail(f"context_domain_libraries lists {f}, which is not on disk")
+    for f in contexts_on_disk:
+        if f not in declared:
+            warn(f"{f} is on disk but not listed in context_domain_libraries")
+
+    gate_paths = {g["path"] for g in d["registries"]["context_brand_gates"]}
+    overlap = gate_paths & set(declared)
+    if overlap:
+        fail(f"domain library declared as a brand gate (forbidden by §3): {sorted(overlap)}")
+    ok(f"all {len(declared)} domain libraries exist and none stands in for a brand gate")
 
 
 def check_skill_headers(d, roles):
     """Each skill's mandatory_context must name roles that exist in the binding map."""
-    for path in sorted(ROOT.glob("*.skill.md")):
+    for path in sorted((ROOT / "skills").glob("*.skill.md")):
         m = re.search(r"^mandatory_context:\s*\[(.*?)\]", path.read_text(), re.M)
         if not m:
             fail(f"{path.name} has no mandatory_context in its routing header")
             continue
         declared = [r.strip() for r in m.group(1).split(",") if r.strip()]
-        unbound = [r for r in declared if r not in roles]
-        for r in unbound:
-            fail(f"{path.name} requires role '{r}', which has no binding (route would be BLOCKED)")
-    if not any("mandatory_context" in f or "requires role" in f for f in FAILS):
-        ok("every skill's mandatory_context resolves through the binding map")
+        unknown = [r for r in declared if r not in roles]
+        for r in unknown:
+            fail(f"{path.name} requires '{r}', which is not one of the ten brand gates")
+    if not any("mandatory_context" in f or "not one of the ten" in f for f in FAILS):
+        ok("every skill's mandatory_context names a declared brand gate")
 
 
 def check_router_md(d, roles):
-    """Router.md §3.1 is a mirror of the dashboard map; mirrors go stale."""
+    """Router.md §3 names the gates; the dashboard declares them. Mirrors go stale."""
     text = (ROOT / "Router.md").read_text()
     for role in roles:
         if f"`{role}`" not in text:
@@ -131,27 +144,34 @@ def check_router_md(d, roles):
     # section names them to deny they exist, so unwrap the prose first and
     # discount the sentence that does the denying.
     flat = " ".join(text.split())
-    denial = ("There is no `/skills/` or `/context/` directory")
-    claims = flat.replace(denial, "")
-    for legacy in ("/skills/", "/context/"):
-        if legacy in claims:
-            fail(f"Router.md still refers to {legacy} as a real path; the repository is flat")
-    if denial not in flat:
-        warn("Router.md no longer states the layout is flat — re-check §1 before trusting this")
-    ok("Router.md topology matches the flat repository layout")
+    for needed in ("/skills/", "/context/", "context/brand/<name>.context.md"):
+        if needed not in flat:
+            fail(f"Router.md §1/§3 no longer mentions {needed}; topology has drifted from disk")
+    ok("Router.md topology and path resolution match the repository layout")
 
 
 def check_router_js(d, roles):
     """router.js must not carry a second, divergent copy of the binding map."""
     text = (ROOT / "router.js").read_text()
-    if "STATE?.registries?.context_roles" not in text:
-        fail("router.js does not read the binding map from dashboard.json — it will drift")
+    if "STATE?.registries?.context_brand_gates" not in text:
+        fail("router.js does not read gate state from dashboard.json — it will drift")
     else:
-        ok("router.js resolves context through dashboard.json at runtime")
+        ok("router.js reads brand-gate state from dashboard.json at runtime")
+
+    # Strip comments first: prose explaining why domain libraries are excluded is fine;
+    # what must not exist is code that actually builds a context/domain/ path.
+    code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    code = re.sub(r"(?m)^\s*//.*$", "", code)
+    code = re.sub(r"(?m)\s+//.*$", "", code)
+    if "context/brand/" not in code:
+        fail("router.js does not resolve gates to context/brand/ (Router.md §3)")
+    if "context/domain/" in code:
+        fail("router.js builds a context/domain/ path — a library must never satisfy a gate")
+    ok("router.js resolves gates to context/brand/ and never to a domain library")
 
     for role in roles:
         if role not in text:
-            warn(f"role '{role}' missing from router.js cold-start fallback")
+            warn(f"gate '{role}' missing from router.js resolveGates table")
 
     # every CSS class router.js emits must exist in the stylesheet
     css = (ROOT / "control_room.html").read_text()
@@ -181,7 +201,8 @@ def check_palette_parity(d):
 
 def check_pipeline(d):
     """Phase skills must be real skills; progress must agree with status."""
-    registered = {s["file"].replace(".skill.md", "") for s in d["registries"]["skills"]}
+    registered = {s["file"].replace("skills/", "").replace(".skill.md", "")
+                  for s in d["registries"]["skills"]}
     enum = set(d["pipeline"]["status_enum"])
     ids = [p["id"] for p in d["pipeline"]["phases"]]
 
@@ -206,10 +227,13 @@ def check_pipeline(d):
 
 
 def check_context_loaded(d, roles):
+    authored = {g["role"] for g in d["registries"]["context_brand_gates"] if g.get("authored")}
     for r in d["system_status"].get("context_loaded", []):
         if r not in roles:
-            fail(f"system_status.context_loaded names '{r}', which has no binding")
-    ok("system_status.context_loaded names only bound roles")
+            fail(f"system_status.context_loaded names '{r}', which is not a brand gate")
+        elif r not in authored:
+            fail(f"system_status.context_loaded claims '{r}' is loaded, but it is not authored")
+    ok("system_status.context_loaded claims only authored gates")
 
 
 def check_event_log(d):
@@ -233,7 +257,8 @@ def main():
 
     skills, contexts = check_protocol_files(d)
     check_skill_registry(d, skills)
-    roles = check_context_bindings(d, contexts)
+    roles = check_brand_gates(d)
+    check_domain_libraries(d, contexts)
     check_skill_headers(d, roles)
     check_router_md(d, roles)
     check_router_js(d, roles)

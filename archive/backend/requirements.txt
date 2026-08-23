@@ -1,0 +1,34 @@
+# Derived from the actual import graph in app/ — see DECISIONS.md.
+# NOT yet exercised: no install or run has been performed against this file.
+
+# --- web layer ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9        # OAuth2PasswordRequestForm (app/api/auth.py)
+
+# --- config / validation ---
+pydantic>=2.6
+pydantic-settings>=2.2         # app/config.py: BaseSettings
+
+# --- persistence ---
+sqlalchemy[asyncio]>=2.0       # app/database.py, app/models.py
+asyncpg>=0.29                  # config.py builds postgresql+asyncpg:// URI
+
+# --- auth ---
+python-jose[cryptography]>=3.3 # app/api/auth.py: from jose import JWTError, jwt
+passlib[bcrypt]>=1.7.4         # app/api/auth.py: CryptContext
+
+# --- background work ---
+celery>=5.3                    # app/tasks/reorganization.py
+redis>=5.0                     # celery broker + result backend
+
+# --- graph store ---
+neo4j>=5.17                    # app/services/graph_store.py: AsyncGraphDatabase
+
+# --- LLM client (currently points at Groq's OpenAI-compatible endpoint) ---
+openai>=1.12                   # app/services/ai_engine.py
+
+# --- optional ---
+# pinecone>=3.0                 # app/services/vector_store.py imports this lazily
+#                               # inside try/except and degrades gracefully without it.
+#                               # Left out by default per the local-first decision.

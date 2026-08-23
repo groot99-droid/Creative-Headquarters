@@ -16,33 +16,40 @@ This file is not documentation. It is an **execution contract**. When this file 
 
 ## 1. SYSTEM TOPOLOGY
 
-All 22 protocol files live **flat in the repository root**. There is no `/skills/` or
-`/context/` directory — filenames carry the namespace (`*.skill.md`, `*_context.md`).
-
 ```
 Creative-Headquarters/
 ├── Router.md                ← YOU ARE HERE (logic bridge, read first, every task)
-├── dashboard.json           ← Live system state + the context binding map (§3.1)
+├── dashboard.json           ← Live system state (read at task start, write at every phase change)
 ├── control_room.html        ← Human UI (renders dashboard.json)
 ├── router.js                ← UI logic bridge (fetch → DOM → API routing stubs)
-│
-├── 8 × *.skill.md           ← executable skills (Four-Part Artifact Architecture)
-│   higgsfield_api · suno_audio · adobe_firefly · adobe_suite_uxp
-│   blender_python · css_html_ui · local_rag_orchestration · hardware_compute
-│
-├── 10 × *_context.md        ← creative-theory corpora (loaded BY ROUTE, never skipped)
-│   ai_creative_strategies · cinematic_videography · classical_illustration
-│   creative_analytical_writing · digital_3d_motion · multimedia_fusion
-│   music_ambience · social_media_marketing · typography_ad_arts · world_building
-│
-├── README.md                ← operator documentation (not a protocol file)
-└── tools/verify_system.py   ← protocol integrity checker (not a protocol file)
+├── DECISIONS.md             ← Architecture decisions in force
+├── /skills/                 ← 8 executable skill files (Four-Part Artifact Architecture)
+│   ├── higgsfield_api.skill.md
+│   ├── suno_audio.skill.md
+│   ├── adobe_firefly.skill.md
+│   ├── adobe_suite_uxp.skill.md
+│   ├── blender_python.skill.md
+│   ├── css_html_ui.skill.md
+│   ├── local_rag_orchestration.skill.md
+│   └── hardware_compute.skill.md
+├── /context/
+│   ├── /brand/              ← 10 MANDATORY gate files (§3). NOT YET AUTHORED — see brand/README.md
+│   │   └── README.md            Router blocks per §4 until these exist. This is correct behavior.
+│   └── /domain/             ← 10 reference libraries (worldbuilding, cinematography, …)
+│                                Retrievable material. NOT substitutes for /brand/.
+├── /agents/                 ← 9 sub-executor definitions (debugger, code-reviewer, …)
+├── /tools/
+│   └── /brush-designer/     ← Procreate brush generator. DOM-free core in editor/ + generators/
+│                                + export/; UI in ui/ + panels/. Not yet routed — see DECISIONS.md.
+└── /archive/                ← Living Archive Engine (self-learning memory layer)
+    ├── /backend/app/            FastAPI + classification core + graph/vector stores
+    └── /frontend/src/           React + d3 knowledge-graph UI
 ```
 
-Every context file is a ~25k-word corpus with a routing glossary at `## 1` and ten
-deep-research categories at `## 2.A` … `## 2.J`. "Load in full" means load the
-glossary plus the categories the task actually touches — the glossary exists so the
-agent can jump, not so it can skim.
+Each file in `context/domain/` is a large corpus with a routing glossary at `## 1` and ten
+deep-research categories at `## 2.A` … `## 2.J`; the glossary exists so the agent can jump
+to the relevant theory rather than skim the whole thing. These are retrieval material.
+They are never loaded to satisfy a §3 mandatory gate — see §3 path resolution.
 
 ---
 
@@ -87,53 +94,26 @@ Independently of what the user *says*, inspect what the task *touches*:
 
 ---
 
-## 3. THE ROUTING TABLE (Skill → Mandatory Context ROLES)
-
-Skills declare abstract context **roles**, never filenames. Roles resolve to files
-through the binding map in §3.1. This indirection is what lets the corpus be
-re-cut without touching eight skill files.
+## 3. THE ROUTING TABLE (Skill → Mandatory Context)
 
 | Skill | MUST load before execution | Also load if flagged in dashboard |
 |---|---|---|
 | `higgsfield_api` | `motion_language`, `narrative_continuity`, `visual_identity` | `color_science` |
 | `suno_audio` | `sound_identity`, `brand_voice` | `narrative_continuity` |
 | `adobe_firefly` | `visual_identity`, `color_science` | `typography_system` |
-| `adobe_suite_uxp` | `render_philosophy`, `color_science`, `system_fabric` | `visual_identity` |
+| `adobe_suite_uxp` | `render_philosophy`, `color_science` | `visual_identity` |
 | `blender_python` | `render_philosophy`, `motion_language` | `visual_identity` |
-| `css_html_ui` | `typography_system`, `visual_identity`, `brand_voice`, `system_fabric` | — |
+| `css_html_ui` | `typography_system`, `visual_identity`, `brand_voice` | — |
 | `local_rag_orchestration` | `memory_discipline` | `pipeline_ethics` |
 | `hardware_compute` | `pipeline_ethics`, `render_philosophy` | — |
 
-Multi-skill tasks: union all mandatory role sets, resolve to files, deduplicate, load once.
+**Path resolution:** every name in the two right-hand columns resolves to
+`context/brand/<name>.context.md`. These are brand constants — the files in
+`context/domain/` have different names and a different job, and never satisfy a
+mandatory slot. None of the ten exist yet, so per §4 and §7 every route currently
+halts with `blocked` and the missing filename logged. See `context/brand/README.md`.
 
----
-
-## 3.1 THE CONTEXT BINDING MAP (Role → Real File)
-
-**The authoritative copy of this map is `dashboard.json → registries.context_roles`.**
-`router.js` reads it at runtime; the table below is the human-readable mirror. If the two
-ever disagree, the dashboard wins and the drift is a bug — run `tools/verify_system.py`.
-
-| Role | Resolves to | Why |
-|---|---|---|
-| `visual_identity` | `classical_illustration_context.md` | composition math, value/light, edge control, material logic |
-| `motion_language` | `cinematic_videography_context.md` | lens physics, camera movement mechanics, pacing theory |
-| `sound_identity` | `music_ambience_context.md` | harmony, psychoacoustics, arrangement, mix standards |
-| `narrative_continuity` | `creative_analytical_writing_context.md` + `world_building_context.md` | story structure and character voice, over a canon with timelines and factions |
-| `color_science` | `classical_illustration_context.md` + `cinematic_videography_context.md` | pigment/harmony theory (§2.C) plus chromatic emulation and transforms (§2.D) |
-| `typography_system` | `typography_ad_arts_context.md` | grids, micro-typography, hierarchy, WCAG legibility |
-| `render_philosophy` | `digital_3d_motion_context.md` | PBR math, GI, pass architecture, optimization |
-| `brand_voice` | `social_media_marketing_context.md` | copywriting dynamics, hooks, CTA iteration |
-| `system_fabric` | `multimedia_fusion_context.md` | cross-platform interop, DOM sync, state engines, asset compilation |
-| `pipeline_ethics` | `ai_creative_strategies_context.md` | guardrails, intent alignment, agentic iteration constraints |
-| `memory_discipline` | `ai_creative_strategies_context.md` | context-window economics, handoff preservation, drift mitigation |
-
-Two invariants the checker enforces:
-
-1. **Total binding.** Every role named in §3 resolves to at least one file that exists on
-   disk. An unbound role is a `blocked` route — never a route that proceeds with less context.
-2. **Total coverage.** Every one of the 10 context files is reachable through at least one
-   role. An unreachable corpus file is dead weight and gets reported.
+Multi-skill tasks: union all mandatory context sets, load once, deduplicate.
 
 ---
 
@@ -146,16 +126,15 @@ Before the first tool call of any routed task, the agent MUST print:
   TRIGGER A: <fired/none> → <pattern matched>
   TRIGGER B: <fired/none> → <asset or dashboard state>
   ROUTE:     <skill file>
-  ROLES:     <role, role, role>            ← from §3
-  CONTEXT LOADED: [real_file.md ✓] [real_file.md ✓]   ← resolved via §3.1, real filenames only
+  CONTEXT LOADED: [context/brand/<name>.context.md ✓] …   ← real paths only, per §3
   KEY CONSTRAINTS EXTRACTED: <1-line summary per context file>
   DASHBOARD PHASE: <phase id> → in_progress
 ╚══════════════════════════════════════════════════╝
 ```
 
-`CONTEXT LOADED` lists **filenames that exist on disk**. Listing a role name there, or a
-file the agent did not actually open, is itself an intercept violation — the attestation is
-a claim about reads that happened.
+`CONTEXT LOADED` lists **paths that exist on disk and were actually read**. Listing a bare
+role name, a `context/domain/` file standing in for a brand gate, or a file the agent did not
+open is itself an intercept violation — the attestation is a claim about reads that happened.
 
 If any context file is missing/unreadable: **do not improvise its contents.** Set phase →
 `blocked`, log the missing file, ask the operator.
@@ -175,7 +154,8 @@ Skill files define Context Flush points. At each flush point the agent must: (1)
 The Router refuses to:
 
 - execute a skill file that is not in `dashboard.json → registries.skills` **and** present in the repository root;
-- proceed on a route whose §3 roles do not fully resolve through §3.1 to files that exist;
+- proceed on a route whose §3 gates do not all resolve to readable `context/brand/*.context.md` files;
+- substitute a `context/domain/` library for a missing brand gate;
 - invent, paraphrase-from-memory, or improvise context-file contents;
 - skip hardware verification when `hardware_compute` is in the route chain;
 - run compute-heavy work without a fresh, unconsumed `PASS` token from `verify_compute.sh`
