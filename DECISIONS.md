@@ -115,23 +115,21 @@ imports. Neither has been installed or run — see the caveat in the README.
 
 ---
 
-## D5 — A live Groq API key was removed during consolidation
+## D5 — A third-party Groq key was scrubbed during consolidation
 
-`crispy-engine`'s `DEPLOY.md` contained a real Groq API key in plaintext,
-presented as "already configured in `.env`". It was carried into `archive/` by the
-consolidation and caught by GitHub push protection.
+`crispy-engine`'s `DEPLOY.md` carried a `gsk_` key in plaintext, labeled "already
+configured in `.env`". It came into `archive/` with the consolidation and tripped
+GitHub push protection.
 
-It has been replaced with a placeholder here. **That does not revoke it.** The key
-remains in `crispy-engine`'s git history, and this repository is *public* while
-crispy-engine is private — so the consolidation came close to publishing a working
-credential.
-
-**Rotate the key at console.groq.com.** Redaction is not revocation.
+Per the repo owner it is not his key, is not active, and was copied from a public
+Reddit post. No rotation is needed. It stays redacted anyway for two practical
+reasons: push protection blocks the string regardless of whether it works, and
+republishing someone else's credential into a public repo is not worth the
+argument.
 
 Other `gsk_`/`sk-` strings across the repo were checked and are documentation
-placeholders, not credentials.
+placeholders.
 
-Going forward: `archive/backend/app/config.py` reads every secret from the
-environment with empty defaults, and `docker-compose.yml` passes them through as
-`${GROQ_API_KEY}` etc. The `.env` file is the only place a real value belongs, and
-it must never be committed.
+`archive/backend/app/config.py` reads every secret from the environment with empty
+defaults and `docker-compose.yml` passes them through as `${GROQ_API_KEY}`, so
+`.env` is the only place a real value belongs. `.gitignore` now covers it.
