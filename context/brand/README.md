@@ -1,6 +1,13 @@
 # context/brand/ — Router-mandatory context files
 
-**Status: NOT YET AUTHORED. The Router blocks on every route until these exist.**
+**Status: NOT YET AUTHORED — and that no longer halts the system.**
+
+`Router.md` §5 resolves an unauthored constant from the vault: first by recalling a
+prior `## Decisions in Force` that states it (L1), then by deriving it from
+precedent across past Content MDs (L2). Authoring a file here promotes that
+constant to L0 — exact, permanent, no inference. So these files are worth writing,
+but the system accumulates working answers to them either way, and the ones you do
+write become the authority that overrides whatever it inferred.
 
 ## Why this directory exists
 
@@ -51,6 +58,20 @@ requires that the file exist and be readable.
 
 ## Until then
 
-Any routed task will hit §4 and set its phase to `blocked` with the missing
-filename logged. That is correct behavior, not a bug — the system refusing to
-produce off-brand work rather than guessing.
+Routes still run. A constant unauthored here is resolved from the vault and marked
+**provisional** in the attestation and in the Content MD that used it, with its
+confidence and the notes it drew on. Only a constant with no file *and* no
+precedent (L3) parks a task.
+
+Two consequences worth knowing:
+
+- **Early work carries more provisional constraints**, because there is less
+  precedent to derive from. That is expected, and it is visible — every one is
+  labelled, never silently assumed.
+- **Authoring a file retroactively sharpens nothing already made**, but it stops
+  the inference from that point on. If the derived answers have been drifting from
+  what you actually want, writing the file is the fix.
+
+A good moment to author one of these is when you notice the same provisional
+constraint being derived over and over. The system is telling you what it keeps
+having to guess.

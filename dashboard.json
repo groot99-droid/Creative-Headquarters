@@ -6,27 +6,46 @@
     "generated": "2026-07-01T00:00:00Z",
     "file_count_target": 22
   },
-
   "system_status": {
     "state": "NOMINAL",
-    "state_enum": ["NOMINAL", "DEGRADED", "BLOCKED", "OFFLINE"],
+    "state_enum": [
+      "NOMINAL",
+      "DEGRADED",
+      "BLOCKED",
+      "OFFLINE"
+    ],
     "mode": "autonomous",
-    "mode_enum": ["autonomous", "supervised", "manual"],
+    "mode_enum": [
+      "autonomous",
+      "supervised",
+      "manual"
+    ],
     "last_heartbeat": "2026-07-01T09:42:11Z",
     "router_version": "1.0",
     "intercept_violations_24h": 0,
     "active_skill": "higgsfield_api",
-    "context_loaded": ["motion_language", "narrative_continuity", "visual_identity"]
+    "context_loaded": [
+      "motion_language",
+      "narrative_continuity",
+      "visual_identity"
+    ]
   },
-
   "hardware": {
     "host": "Mac Studio M3 Ultra",
     "unified_memory_gb": 192,
     "memory_pressure": "green",
-    "memory_pressure_enum": ["green", "yellow", "red"],
+    "memory_pressure_enum": [
+      "green",
+      "yellow",
+      "red"
+    ],
     "egpu": {
       "status": "attached",
-      "status_enum": ["attached", "detached", "error"],
+      "status_enum": [
+        "attached",
+        "detached",
+        "error"
+      ],
       "model": "External Compute Node",
       "vram_gb": 48,
       "vram_used_gb": 11.2,
@@ -40,65 +59,186 @@
       "endpoint": "http://localhost:11434"
     }
   },
-
   "pipeline": {
     "project": "PROJECT_AURORA",
     "current_phase_id": "ph_03",
     "phases": [
-      { "id": "ph_01", "label": "Concept & Style Frames", "skill": "adobe_firefly", "status": "complete", "progress_pct": 100 },
-      { "id": "ph_02", "label": "Score & Stems", "skill": "suno_audio", "status": "complete", "progress_pct": 100 },
-      { "id": "ph_03", "label": "Shot Generation", "skill": "higgsfield_api", "status": "awaiting_render", "progress_pct": 62 },
-      { "id": "ph_04", "label": "3D Insert Shots", "skill": "blender_python", "status": "queued", "progress_pct": 0 },
-      { "id": "ph_05", "label": "Compositing", "skill": "adobe_suite_uxp", "status": "compositing", "progress_pct": 18 },
-      { "id": "ph_06", "label": "Delivery UI Page", "skill": "css_html_ui", "status": "queued", "progress_pct": 0 }
+      {
+        "id": "ph_01",
+        "label": "Concept & Style Frames",
+        "skill": "adobe_firefly",
+        "status": "complete",
+        "progress_pct": 100
+      },
+      {
+        "id": "ph_02",
+        "label": "Score & Stems",
+        "skill": "suno_audio",
+        "status": "complete",
+        "progress_pct": 100
+      },
+      {
+        "id": "ph_03",
+        "label": "Shot Generation",
+        "skill": "higgsfield_api",
+        "status": "awaiting_render",
+        "progress_pct": 62
+      },
+      {
+        "id": "ph_04",
+        "label": "3D Insert Shots",
+        "skill": "blender_python",
+        "status": "queued",
+        "progress_pct": 0
+      },
+      {
+        "id": "ph_05",
+        "label": "Compositing",
+        "skill": "adobe_suite_uxp",
+        "status": "compositing",
+        "progress_pct": 18
+      },
+      {
+        "id": "ph_06",
+        "label": "Delivery UI Page",
+        "skill": "css_html_ui",
+        "status": "queued",
+        "progress_pct": 0
+      }
     ],
-    "status_enum": ["queued", "in_progress", "awaiting_render", "compositing", "review", "blocked", "complete"]
+    "status_enum": [
+      "queued",
+      "in_progress",
+      "awaiting_render",
+      "compositing",
+      "review",
+      "blocked",
+      "complete"
+    ],
+    "_note": "Live execution state for the current run. Project memory lives in vault/ as Content MDs, not here."
   },
-
   "active_variables": {
-    "character_uuid": "chr_7f3a9d2e-aurora-lead",
-    "environment_uuid": "env_c4b81f00-neon-harbor",
-    "seed_lock": 448811,
-    "style_ref_id": "sref_ff_20260630_114a",
-    "motion_vector_preset": "dolly_in_slow_02",
-    "audio_bpm": 128,
-    "audio_key": "F minor",
-    "master_palette": ["#0B0E17", "#F2A33C", "#3EE0CF", "#E84D6F", "#C9CEDB"],
-    "aspect_ratio": "21:9",
-    "fps": 24,
-    "style_ref_id_prev": "sref_ff_20260628_09c1"
+    "_note": "Run-scoped only. Disposable between runs. Anything that must survive to the next session belongs in the task's Content MD (Router.md \u00a78).",
+    "content_md": null,
+    "resolved_context": [],
+    "provisional_constraints": []
   },
-
   "registries": {
     "skills": [
-      { "file": "higgsfield_api.skill.md", "domain": "AI video generation", "status": "ready" },
-      { "file": "suno_audio.skill.md", "domain": "AI music generation", "status": "ready" },
-      { "file": "adobe_firefly.skill.md", "domain": "AI image generation", "status": "ready" },
-      { "file": "adobe_suite_uxp.skill.md", "domain": "Adobe automation (UXP/ExtendScript)", "status": "ready" },
-      { "file": "blender_python.skill.md", "domain": "3D via bpy", "status": "ready" },
-      { "file": "css_html_ui.skill.md", "domain": "Front-end construction", "status": "ready" },
-      { "file": "local_rag_orchestration.skill.md", "domain": "Local RAG / DeepSeek-R1", "status": "ready" },
-      { "file": "hardware_compute.skill.md", "domain": "Compute verification & allocation", "status": "ready" }
+      {
+        "file": "higgsfield_api.skill.md",
+        "domain": "AI video generation",
+        "status": "ready"
+      },
+      {
+        "file": "suno_audio.skill.md",
+        "domain": "AI music generation",
+        "status": "ready"
+      },
+      {
+        "file": "adobe_firefly.skill.md",
+        "domain": "AI image generation",
+        "status": "ready"
+      },
+      {
+        "file": "adobe_suite_uxp.skill.md",
+        "domain": "Adobe automation (UXP/ExtendScript)",
+        "status": "ready"
+      },
+      {
+        "file": "blender_python.skill.md",
+        "domain": "3D via bpy",
+        "status": "ready"
+      },
+      {
+        "file": "css_html_ui.skill.md",
+        "domain": "Front-end construction",
+        "status": "ready"
+      },
+      {
+        "file": "local_rag_orchestration.skill.md",
+        "domain": "Local RAG / DeepSeek-R1",
+        "status": "ready"
+      },
+      {
+        "file": "hardware_compute.skill.md",
+        "domain": "Compute verification & allocation",
+        "status": "ready"
+      }
     ],
     "context": [
-      { "file": "visual_identity.context.md", "loaded": true },
-      { "file": "motion_language.context.md", "loaded": true },
-      { "file": "sound_identity.context.md", "loaded": false },
-      { "file": "narrative_continuity.context.md", "loaded": true },
-      { "file": "color_science.context.md", "loaded": false },
-      { "file": "typography_system.context.md", "loaded": false },
-      { "file": "render_philosophy.context.md", "loaded": false },
-      { "file": "brand_voice.context.md", "loaded": false },
-      { "file": "pipeline_ethics.context.md", "loaded": false },
-      { "file": "memory_discipline.context.md", "loaded": false }
+      {
+        "file": "visual_identity.context.md",
+        "loaded": true
+      },
+      {
+        "file": "motion_language.context.md",
+        "loaded": true
+      },
+      {
+        "file": "sound_identity.context.md",
+        "loaded": false
+      },
+      {
+        "file": "narrative_continuity.context.md",
+        "loaded": true
+      },
+      {
+        "file": "color_science.context.md",
+        "loaded": false
+      },
+      {
+        "file": "typography_system.context.md",
+        "loaded": false
+      },
+      {
+        "file": "render_philosophy.context.md",
+        "loaded": false
+      },
+      {
+        "file": "brand_voice.context.md",
+        "loaded": false
+      },
+      {
+        "file": "pipeline_ethics.context.md",
+        "loaded": false
+      },
+      {
+        "file": "memory_discipline.context.md",
+        "loaded": false
+      }
     ]
   },
-
   "event_log": [
-    { "ts": "2026-07-01T09:42:11Z", "actor": "router", "event": "HEARTBEAT", "detail": "System nominal, autonomous mode" },
-    { "ts": "2026-07-01T09:40:03Z", "actor": "higgsfield_api", "event": "RENDER_SUBMITTED", "detail": "Shot 07 → job hf_a91x, seed 448811" },
-    { "ts": "2026-07-01T09:38:47Z", "actor": "router", "event": "CONTEXT_LOADED", "detail": "motion_language, narrative_continuity, visual_identity" },
-    { "ts": "2026-07-01T09:38:41Z", "actor": "router", "event": "INTERCEPT", "detail": "Trigger A (motion verbs) + Trigger B (ph_03 awaiting_render)" },
-    { "ts": "2026-07-01T09:12:20Z", "actor": "adobe_suite_uxp", "event": "COMP_STARTED", "detail": "Timeline v3 → compositing 18%" }
+    {
+      "ts": "2026-07-01T09:42:11Z",
+      "actor": "router",
+      "event": "HEARTBEAT",
+      "detail": "System nominal, autonomous mode"
+    },
+    {
+      "ts": "2026-07-01T09:40:03Z",
+      "actor": "higgsfield_api",
+      "event": "RENDER_SUBMITTED",
+      "detail": "Shot 07 \u2192 job hf_a91x, seed 448811"
+    },
+    {
+      "ts": "2026-07-01T09:38:47Z",
+      "actor": "router",
+      "event": "CONTEXT_LOADED",
+      "detail": "motion_language, narrative_continuity, visual_identity"
+    },
+    {
+      "ts": "2026-07-01T09:38:41Z",
+      "actor": "router",
+      "event": "INTERCEPT",
+      "detail": "Trigger A (motion verbs) + Trigger B (ph_03 awaiting_render)"
+    },
+    {
+      "ts": "2026-07-01T09:12:20Z",
+      "actor": "adobe_suite_uxp",
+      "event": "COMP_STARTED",
+      "detail": "Timeline v3 \u2192 compositing 18%"
+    }
   ]
 }
