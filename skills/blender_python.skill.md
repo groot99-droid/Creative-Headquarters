@@ -48,14 +48,23 @@ BLENDER=${BLENDER_BIN:-/Applications/Blender.app/Contents/MacOS/Blender}
 "$BLENDER" -b --python-expr "import bpy;prefs=bpy.context.preferences.addons['cycles'].preferences;prefs.get_devices();print('DEV:',[d.name for d in prefs.devices])" 2>/dev/null | grep -q "DEV:" \
   && echo "OK:P3" || echo "FAIL:P3 cycles devices not enumerable"
 
-# P4 — HARDWARE GATE: hardware_compute.skill.md must have written a fresh pass token (<30 min old)
+# P4 — HARDWARE GATE: hardware_compute must have written a fresh, unconsumed PASS
+#      token FOR THIS WORKLOAD. ARTIFACT C's law is "one token, one workload" —
+#      checking only verdict+age would let a batch_2d token authorize a 3D render.
 python3 - <<'PY'
-import json,time,sys
+import json, time
 try:
-    t=json.load(open("state/compute_gate.json"))
-    ok = t["verdict"]=="PASS" and (time.time()-t["ts_epoch"])<1800
-except Exception: ok=False
-print("OK:P4" if ok else "FAIL:P4 run hardware_compute first")
+    t = json.load(open("state/compute_gate.json"))
+    age = time.time() - t["ts_epoch"]
+    ttl = t.get("ttl_seconds", 1800)          # honor the token's own TTL, don't hard-code
+    reasons = []
+    if t.get("verdict") != "PASS":            reasons.append("verdict=%s" % t.get("verdict"))
+    if age >= ttl:                            reasons.append("stale (%ds > %ds TTL)" % (age, ttl))
+    if t.get("workload") != "render_3d":      reasons.append("wrong workload=%s" % t.get("workload"))
+    if t.get("consumed_by") is not None:      reasons.append("already consumed by %s" % t["consumed_by"])
+except Exception as e:
+    reasons = ["unreadable token: %s" % e]
+print("OK:P4" if not reasons else "FAIL:P4 " + "; ".join(reasons))
 PY
 
 # P5 — Output + tools dirs
@@ -71,16 +80,17 @@ State verification (agent-level):
 ## 2. EXECUTION PROCESS (Part 3 of 4)
 
 1. **UNPACK** — Write ARTIFACT A → `tools/bpy/camera_path.py` and ARTIFACT B → `tools/bpy/lowpoly_gen.py` verbatim (skip if byte-identical files already exist).
-2. **PARAMETERIZE** — Templates read params from a JSON sidecar (`tools/bpy/params.json`, schema in ARTIFACT C). Write the sidecar; never edit the .py bodies per-task.
-3. **DRY RUN** — Execute with `"render": false` in params: builds the scene, prints frame count + camera checksum, renders nothing. Inspect the printed manifest.
-4. **⟪ CONTEXT FLUSH №1 ⟫** — Log manifest to dashboard event_log; drop scene-construction reasoning from working memory.
-5. **RENDER** — Re-run with `"render": true`:
+2. **CLAIM THE GATE** — Immediately before the first render call, write `"consumed_by": "blender_python"` into `state/compute_gate.json`. The token is now spent; a second job needs a fresh probe (ARTIFACT C: one token, one workload).
+3. **PARAMETERIZE** — Templates read params from a JSON sidecar (`tools/bpy/params.json`, schema in ARTIFACT C). Write the sidecar; never edit the .py bodies per-task.
+4. **DRY RUN** — Execute with `"render": false` in params: builds the scene, prints frame count + camera checksum, renders nothing. Inspect the printed manifest.
+5. **⟪ CONTEXT FLUSH №1 ⟫** — Log manifest to dashboard event_log; drop scene-construction reasoning from working memory.
+6. **RENDER** — Re-run with `"render": true`:
    ```bash
    "$BLENDER" -b -P tools/bpy/camera_path.py -- tools/bpy/params.json
    ```
    Monitor stdout for `Fra:` progress lines; update `progress_pct` every 10%.
-6. **VERIFY** — Frame count on disk == manifest count; spot-open first/middle/last frames against `render_philosophy` (no default grey world, no un-set film exposure).
-7. **⟪ CONTEXT FLUSH №2 ⟫** — Writeback paths + manifest summary; delete params.json only if the operator marks the shot final (params are the reproducibility record — prefer archiving to deleting).
+7. **VERIFY** — Frame count on disk == manifest count; spot-open first/middle/last frames against `render_philosophy` (no default grey world, no un-set film exposure).
+8. **⟪ CONTEXT FLUSH №2 ⟫** — Writeback paths + manifest summary; delete params.json only if the operator marks the shot final (params are the reproducibility record — prefer archiving to deleting).
 
 ---
 

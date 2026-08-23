@@ -1,4 +1,4 @@
-# ROUTER.md — MASTER ROUTER PROTOCOL v1.0
+# ROUTER.md — MASTER ROUTER PROTOCOL v1.1
 ### Studio Headless OS · Core File 1/4 · Load Priority: ABSOLUTE FIRST
 
 ---
@@ -64,6 +64,11 @@ Creative-Headquarters/
                                   Indexes the vault. Never owns it.
 ```
 
+Each file in `context/domain/` is a large corpus with a routing glossary at `## 1` and ten
+deep-research categories at `## 2.A` … `## 2.J`; the glossary exists so the agent can jump
+to the relevant theory rather than skim the whole thing. These are retrieval material.
+They are never loaded to satisfy a §3 mandatory gate — see §3 path resolution.
+
 ---
 
 ## 2. THE DUAL-TRIGGER INTERCEPT SYSTEM
@@ -82,7 +87,7 @@ Scan the user request for intent verbs and domain nouns:
 | "3D / blender / camera path / low-poly / procedural / rig" | `blender_python.skill.md` |
 | "UI / dashboard / component / landing page / DOM" | `css_html_ui.skill.md` |
 | "search my docs / recall / summarize corpus / RAG / DeepSeek" | `local_rag_orchestration.skill.md` |
-| "render locally / eGPU / heavy compute / batch process" | `hardware_compute.skill.md` |
+| "render locally / GPU / compute node / heavy compute / batch process" | `hardware_compute.skill.md` |
 
 ### TRIGGER B — ASSET & STATE TRIGGER
 Independently of what the user *says*, inspect what the task *touches*:

@@ -7,7 +7,7 @@
     "file_count_target": 22
   },
   "system_status": {
-    "state": "NOMINAL",
+    "state": "BLOCKED",
     "state_enum": [
       "NOMINAL",
       "DEGRADED",
@@ -20,15 +20,12 @@
       "supervised",
       "manual"
     ],
-    "last_heartbeat": "2026-07-01T09:42:11Z",
+    "last_heartbeat": "2026-08-23T18:30:00Z",
     "router_version": "1.0",
     "intercept_violations_24h": 0,
-    "active_skill": "higgsfield_api",
-    "context_loaded": [
-      "motion_language",
-      "narrative_continuity",
-      "visual_identity"
-    ]
+    "active_skill": null,
+    "context_loaded": [],
+    "blocked_reason": "Every \u00a73 context resolves to L3 UNRESOLVED: no context/brand/*.context.md authored, and vault/ holds no Content MDs to recall (L1) or derive from (L2 needs >=3). Per \u00a75 the Router parks in every mode, autonomous included."
   },
   "hardware": {
     "host": "Mac Studio M3 Ultra",
@@ -81,7 +78,7 @@
         "id": "ph_03",
         "label": "Shot Generation",
         "skill": "higgsfield_api",
-        "status": "awaiting_render",
+        "status": "blocked",
         "progress_pct": 62
       },
       {
@@ -126,90 +123,157 @@
   "registries": {
     "skills": [
       {
-        "file": "higgsfield_api.skill.md",
+        "file": "skills/higgsfield_api.skill.md",
         "domain": "AI video generation",
         "status": "ready"
       },
       {
-        "file": "suno_audio.skill.md",
+        "file": "skills/suno_audio.skill.md",
         "domain": "AI music generation",
         "status": "ready"
       },
       {
-        "file": "adobe_firefly.skill.md",
+        "file": "skills/adobe_firefly.skill.md",
         "domain": "AI image generation",
         "status": "ready"
       },
       {
-        "file": "adobe_suite_uxp.skill.md",
+        "file": "skills/adobe_suite_uxp.skill.md",
         "domain": "Adobe automation (UXP/ExtendScript)",
         "status": "ready"
       },
       {
-        "file": "blender_python.skill.md",
+        "file": "skills/blender_python.skill.md",
         "domain": "3D via bpy",
         "status": "ready"
       },
       {
-        "file": "css_html_ui.skill.md",
+        "file": "skills/css_html_ui.skill.md",
         "domain": "Front-end construction",
         "status": "ready"
       },
       {
-        "file": "local_rag_orchestration.skill.md",
+        "file": "skills/local_rag_orchestration.skill.md",
         "domain": "Local RAG / DeepSeek-R1",
         "status": "ready"
       },
       {
-        "file": "hardware_compute.skill.md",
+        "file": "skills/hardware_compute.skill.md",
         "domain": "Compute verification & allocation",
         "status": "ready"
       }
     ],
-    "context": [
+    "context_note": "Router.md \u00a73 gates resolve to context/brand/<name>.context.md at L0. None is authored, and vault/ has no Content MDs, so L1/L2 cannot resolve either \u2014 every route parks at L3 per \u00a75. That is correct behavior, not a bug. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
+    "context_brand_gates": [
       {
-        "file": "visual_identity.context.md",
-        "loaded": true
+        "role": "visual_identity",
+        "path": "context/brand/visual_identity.context.md",
+        "gates_skills": [
+          "adobe_firefly",
+          "higgsfield_api",
+          "css_html_ui"
+        ],
+        "authored": false
       },
       {
-        "file": "motion_language.context.md",
-        "loaded": true
+        "role": "color_science",
+        "path": "context/brand/color_science.context.md",
+        "gates_skills": [
+          "adobe_firefly",
+          "adobe_suite_uxp"
+        ],
+        "authored": false
       },
       {
-        "file": "sound_identity.context.md",
-        "loaded": false
+        "role": "typography_system",
+        "path": "context/brand/typography_system.context.md",
+        "gates_skills": [
+          "css_html_ui"
+        ],
+        "authored": false
       },
       {
-        "file": "narrative_continuity.context.md",
-        "loaded": true
+        "role": "motion_language",
+        "path": "context/brand/motion_language.context.md",
+        "gates_skills": [
+          "higgsfield_api",
+          "blender_python"
+        ],
+        "authored": false
       },
       {
-        "file": "color_science.context.md",
-        "loaded": false
+        "role": "sound_identity",
+        "path": "context/brand/sound_identity.context.md",
+        "gates_skills": [
+          "suno_audio"
+        ],
+        "authored": false
       },
       {
-        "file": "typography_system.context.md",
-        "loaded": false
+        "role": "brand_voice",
+        "path": "context/brand/brand_voice.context.md",
+        "gates_skills": [
+          "suno_audio",
+          "css_html_ui"
+        ],
+        "authored": false
       },
       {
-        "file": "render_philosophy.context.md",
-        "loaded": false
+        "role": "narrative_continuity",
+        "path": "context/brand/narrative_continuity.context.md",
+        "gates_skills": [
+          "higgsfield_api"
+        ],
+        "authored": false
       },
       {
-        "file": "brand_voice.context.md",
-        "loaded": false
+        "role": "render_philosophy",
+        "path": "context/brand/render_philosophy.context.md",
+        "gates_skills": [
+          "adobe_suite_uxp",
+          "blender_python",
+          "hardware_compute"
+        ],
+        "authored": false
       },
       {
-        "file": "pipeline_ethics.context.md",
-        "loaded": false
+        "role": "pipeline_ethics",
+        "path": "context/brand/pipeline_ethics.context.md",
+        "gates_skills": [
+          "local_rag_orchestration",
+          "hardware_compute"
+        ],
+        "authored": false
       },
       {
-        "file": "memory_discipline.context.md",
-        "loaded": false
+        "role": "memory_discipline",
+        "path": "context/brand/memory_discipline.context.md",
+        "gates_skills": [
+          "local_rag_orchestration"
+        ],
+        "authored": false
       }
+    ],
+    "context_domain_libraries": [
+      "context/domain/ai_creative_strategies_context.md",
+      "context/domain/cinematic_videography_context.md",
+      "context/domain/classical_illustration_context.md",
+      "context/domain/creative_analytical_writing_context.md",
+      "context/domain/digital_3d_motion_context.md",
+      "context/domain/multimedia_fusion_context.md",
+      "context/domain/music_ambience_context.md",
+      "context/domain/social_media_marketing_context.md",
+      "context/domain/typography_ad_arts_context.md",
+      "context/domain/world_building_context.md"
     ]
   },
   "event_log": [
+    {
+      "ts": "2026-08-23T18:30:00Z",
+      "actor": "router",
+      "event": "PARKED",
+      "detail": "ph_03 higgsfield_api \u2192 L3 UNRESOLVED: motion_language, narrative_continuity, visual_identity. Resolve by authoring context/brand/<name>.context.md. content_md: null (no vault note \u2014 nothing to write back into)"
+    },
     {
       "ts": "2026-07-01T09:42:11Z",
       "actor": "router",

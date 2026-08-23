@@ -43,13 +43,14 @@
       "hd hd hd hd hd hd hd hd hd hd hd hd"
       "pl pl pl pl pl pl pl pl pl pl pl pl"
       "vr vr vr vr hw hw hw hw lg lg lg lg"
-      "sk sk sk sk sk sk sk sk lg lg lg lg";
+      "sk sk sk sk sk sk sk sk lg lg lg lg"
+      "cx cx cx cx cx cx cx cx lg lg lg lg";
   }
   @media (max-width: 980px) {
-    .grid { grid-template-areas: "hd hd hd hd hd hd hd hd hd hd hd hd" "pl pl pl pl pl pl pl pl pl pl pl pl" "vr vr vr vr vr vr hw hw hw hw hw hw" "lg lg lg lg lg lg lg lg lg lg lg lg" "sk sk sk sk sk sk sk sk sk sk sk sk"; }
+    .grid { grid-template-areas: "hd hd hd hd hd hd hd hd hd hd hd hd" "pl pl pl pl pl pl pl pl pl pl pl pl" "vr vr vr vr vr vr hw hw hw hw hw hw" "lg lg lg lg lg lg lg lg lg lg lg lg" "sk sk sk sk sk sk sk sk sk sk sk sk" "cx cx cx cx cx cx cx cx cx cx cx cx"; }
   }
   @media (max-width: 640px) {
-    .grid { grid-template-columns: 1fr; grid-template-areas: "hd" "pl" "vr" "hw" "lg" "sk"; }
+    .grid { grid-template-columns: 1fr; grid-template-areas: "hd" "pl" "vr" "hw" "lg" "sk" "cx"; }
   }
 
   .panel { grid-area: var(--area); background: var(--bg-panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
@@ -104,9 +105,10 @@
   .status-word { text-transform: uppercase; letter-spacing: 0.1em; }
   .c-cyan { color: var(--cyan); } .c-amber { color: var(--amber); }
   .c-alert { color: var(--alert); } .c-dim { color: var(--ink-dim); }
+  .c-queued { color: var(--queued); }   /* semantic status.idle — distinct from ink.dim */
 
   /* ── Variables / Hardware / Log / Skills ── */
-  .vars { --area: vr; } .hw { --area: hw; } .log { --area: lg; } .skills { --area: sk; }
+  .vars { --area: vr; } .hw { --area: hw; } .log { --area: lg; } .skills { --area: sk; } .ctx { --area: cx; }
   .kv { display: grid; grid-template-columns: minmax(120px, 40%) 1fr; row-gap: 9px; column-gap: 12px; }
   .kv .k { color: var(--ink-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; align-self: center; }
   .kv .v { font-size: 12.5px; word-break: break-all; }
@@ -127,13 +129,27 @@
   .log .dt { font-size: 11.5px; color: var(--ink); opacity: .85; }
 
   .chipset { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* <button> inherits neither color nor font-family from body — without these two
+     declarations chips render as UA-default black Arial on a dark panel (~1.1:1). */
   .chip { border: 1px solid var(--line); background: var(--bg-raise); border-radius: 4px;
+    color: var(--ink); font-family: var(--font-mono); text-align: left;
     padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .chip:hover { border-color: var(--cyan); }
   .chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); }
   .chip[data-status="busy"] .dot { background: var(--amber); }
   .chip[data-status="error"] .dot { background: var(--alert); }
+
+  .ctx-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+  .ctx-row:last-child { border-bottom: 0; }
+  .ctx-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--queued); }
+  .ctx-row.on .dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .ctx-row.missing .dot { background: var(--alert); box-shadow: 0 0 8px var(--alert); }
+  .ctx-row.missing .f { color: var(--alert); }
+  .ctx-row .f { font-size: 11.5px; color: var(--ink-dim); word-break: break-all; }
+  .ctx-row.on .f { color: var(--ink); }
+  .ctx-row .r { font-size: 10.5px; letter-spacing: 0.04em; word-break: break-all; }
 
   .offline-note { display: none; margin-top: 10px; color: var(--amber); font-size: 11px; }
   body.offline .offline-note { display: block; }
@@ -175,8 +191,13 @@
     </section>
 
     <section class="panel skills" aria-label="Skill registry">
-      <h2>Skill Registry <span class="tick">8 executables</span></h2>
+      <h2>Skill Registry <span class="tick" id="skill-count">—</span></h2>
       <div class="chipset" id="skills"></div>
+    </section>
+
+    <section class="panel ctx" aria-label="Context attestation">
+      <h2>Brand Gates <span class="tick" id="ctx-violations">—</span></h2>
+      <div id="ctx-list"><!-- rows injected by router.js --></div>
     </section>
 
   </main>

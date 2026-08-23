@@ -53,7 +53,11 @@ print("OK:P3" if [c.upper() for c in core]==[c.upper() for c in d] else "FAIL:P3
 PY
 
 # P4 — Lint target exists for edits (never mutate a file you haven't read this task)
-[ -z "$TARGET_FILE" ] || [ -f "$TARGET_FILE" ] && echo "OK:P4" || echo "FAIL:P4 target missing"
+if [ -z "${TARGET_FILE:-}" ] || [ -f "${TARGET_FILE}" ]; then
+  echo "OK:P4"
+else
+  echo "FAIL:P4 target missing: $TARGET_FILE"
+fi
 ```
 
 State verification (agent-level):

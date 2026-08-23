@@ -69,6 +69,49 @@ one promotes it to exact.
 
 ---
 
+## Verifying the protocol
+
+The routing contract is stated in four places that must agree: `Router.md` (the
+contract), `dashboard.json` (live state and gate declarations), `router.js` (runtime
+resolution), and the eight `mandatory_context` headers under `skills/`. Those copies
+drift, and drift here is not cosmetic — a stale mapping halts every route, or worse,
+lets one proceed on context that was never loaded.
+
+```bash
+python3 tools/verify_system.py     # exits non-zero on any drift
+```
+
+It checks that every registered skill exists, every brand gate declares the correct
+`context/brand/<role>.context.md` path and that its `authored` flag matches what is
+actually on disk, no `context/domain/` library is declared as a gate (the substitution
+§3 forbids), every skill's `mandatory_context` names a real gate, `system_status.
+context_loaded` claims only authored gates, every CSS class and element id `router.js`
+touches exists in `control_room.html`, UI tokens still mirror the css_html_ui ARTIFACT A
+token dictionary, the pipeline routes to real skills with coherent progress, and the
+declared `system_status.state` is consistent with the §5 ladder — with nothing authored
+and no vault notes, every context lands at L3, and L3 parks.
+
+Run it after editing any protocol file. Right now it passes with all ten gates reported
+as pending and the state declared `BLOCKED` — honest rather than papered over.
+
+---
+
+## Hardware gating
+
+`skills/hardware_compute.skill.md` is a bouncer, not a launcher. Compute-heavy skills
+may not run without a fresh `PASS` token at `state/compute_gate.json`, carrying a
+workload class and a 30-minute TTL; **one token authorizes one job** — the consuming
+skill stamps `consumed_by` and the token is spent.
+
+The studio is two machines: a macOS host (Adobe, orchestration) and a Linux/Windows
+CUDA node on the LAN for rendering. Not a Thunderbolt eGPU — Apple silicon has no eGPU
+support. `verify_compute.sh` detects which host it is on and probes accordingly; it
+emits one JSON object and mutates nothing. A metric it cannot read comes back `null`
+and evaluates to **fail**, never to pass-by-default. An unverifiable gate is a closed
+gate.
+
+---
+
 ## Where each piece came from
 
 | Path | Source repo |
