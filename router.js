@@ -96,7 +96,7 @@ function renderVariables(v) {
   const box = $("vars");
   box.innerHTML = "";
   for (const [key, val] of Object.entries(v)) {
-    if (key.endsWith("_prev")) continue; // superseded continuity values stay in JSON, not UI
+    if (key.endsWith("_prev")) continue; // legacy key shape; active_variables is run-scoped now (DECISIONS.md D6)
     const k = document.createElement("div"); k.className = "k"; k.textContent = key.replace(/_/g, " ");
     const vEl = document.createElement("div"); vEl.className = "v";
     if (key === "master_palette" && Array.isArray(val)) {
@@ -107,7 +107,13 @@ function renderVariables(v) {
           ? `<span style="background:${h}" title="${esc(h)}"></span>`
           : `<span class="c-alert" title="not a hex color">${esc(h)}</span>`).join("")}</span>`;
     } else {
-      vEl.textContent = Array.isArray(val) ? val.join(", ") : val;
+      if (Array.isArray(val)) {
+        vEl.textContent = val.length ? val.join(", ") : "—";
+      } else if (val === null || val === undefined) {
+        vEl.textContent = "—";           // e.g. content_md before a note exists
+      } else {
+        vEl.textContent = val;
+      }
     }
     box.append(k, vEl);
   }
@@ -197,10 +203,10 @@ function renderContext(d) {
   const missing = gates.filter(g => !g.authored).length;
 
   $("ctx-violations").innerHTML = missing > 0
-    ? `<span class="c-alert">${esc(missing)} of ${gates.length} gates unauthored</span>`
+    ? `<span class="c-alert">${esc(missing)} of ${gates.length} unresolved at L0</span>`
     : (violations > 0
         ? `<span class="c-alert">${esc(violations)} intercept violation${violations === 1 ? "" : "s"} / 24h</span>`
-        : `<span class="c-cyan">all gates authored · 0 violations / 24h</span>`);
+        : `<span class="c-cyan">all gates authored (L0) · 0 violations / 24h</span>`);
 
   $("ctx-list").innerHTML = gates.map(g => {
     const on = g.authored && loaded.has(g.role);
@@ -208,7 +214,7 @@ function renderContext(d) {
     return `<div class="ctx-row ${cls}">
       <span class="dot"></span>
       <span class="f">${esc(brandPath(g.role))}</span>
-      <span class="r c-dim">${g.authored ? esc((g.gates_skills ?? []).join(", ")) : "not authored — blocks route"}</span>
+      <span class="r c-dim">${g.authored ? esc((g.gates_skills ?? []).join(", ")) : "not authored — §5 ladder, L3 parks"}</span>
     </div>`;
   }).join("");
 }
@@ -228,24 +234,27 @@ async function routeSkill(skillFile) {
   const gates = resolveGates(skillFile);
   const paths = gates.map(brandPath);
 
-  // Router.md §7: a mandatory gate that is not authored BLOCKS the route. It is never
-  // satisfied by a context/domain/ library — those are retrieval material, and a general
-  // treatise says nothing about this studio's brand. See context/brand/README.md.
-  const missing = gates.filter(g => !isAuthored(g));
-  if (missing.length) {
-    logLocal("ROUTE_BLOCKED", `${skillFile} → unauthored brand gates: ${missing.join(", ")}`);
-    console.warn(`[router] blocked; author these first:`, missing.map(brandPath));
-    return { ok: false, blocked: true, missing: missing.map(brandPath) };
+  // Router.md §5: an authored brand file is L0. Anything below that (L1 recall from the
+  // vault, L2 derivation across Content MDs) needs vault access this page does not have,
+  // so the UI reports L0 only and defers the ladder to the agent. Gates that are not
+  // authored are shown as unresolved-at-L0 — never silently satisfied by a
+  // context/domain/ library, which §3 forbids outright.
+  const unresolved = gates.filter(g => !isAuthoredL0(g));
+  if (unresolved.length) {
+    logLocal("PARKED", `${skillFile} → not resolved at L0: ${unresolved.join(", ")} ` +
+                       `(agent must descend §5 ladder; L3 parks in every mode)`);
+    console.warn(`[router] unresolved at L0:`, unresolved.map(brandPath));
+    return { ok: false, parked: true, unresolvedAtL0: unresolved.map(brandPath) };
   }
 
-  console.info(`[router] gates satisfied:`, paths);
+  console.info(`[router] all gates authored (L0):`, paths);
   // TODO: POST to local agent runner, e.g.
   // await dispatchAPICall("agent", "/route", { skill: skillFile, gates, paths });
-  logLocal("INTERCEPT", `UI-initiated route → ${skillFile} · context: ${paths.join(", ")} (stub)`);
+  logLocal("INTERCEPT", `UI-initiated route → ${skillFile} · L0 context: ${paths.join(", ")} (stub)`);
   return { ok: true, skill: skillFile, gates, paths };
 }
 
-/* Skill → mandatory context gates. Mirror of Router.md §3. */
+/* Skill → mandatory context. Mirror of Router.md §3. */
 function resolveGates(skillFile) {
   const table = {
     "skills/higgsfield_api.skill.md":          ["motion_language", "narrative_continuity", "visual_identity"],
@@ -260,12 +269,12 @@ function resolveGates(skillFile) {
   return table[skillFile] || [];
 }
 
-/* Router.md §3 path resolution — a gate is always context/brand/<name>.context.md. */
+/* Router.md §3/§5 L0 path — a gate is always context/brand/<name>.context.md. */
 const brandPath = (role) => `context/brand/${role}.context.md`;
 
 /* Authored state lives in dashboard.json so the UI reflects reality rather than a
-   second hard-coded list. Unknown role → not authored → blocked (fail closed). */
-function isAuthored(role) {
+   second hard-coded list. Unknown role → not authored → parked (fail closed). */
+function isAuthoredL0(role) {
   const gates = STATE?.registries?.context_brand_gates ?? [];
   return gates.some(g => g.role === role && g.authored === true);
 }

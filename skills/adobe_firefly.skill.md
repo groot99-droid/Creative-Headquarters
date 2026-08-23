@@ -1,6 +1,20 @@
 # adobe_firefly.skill.md — AI IMAGE GENERATION EXECUTABLE
 ### Studio Headless OS · Skill 3/8 · Four-Part Artifact Architecture
 
+
+> [!WARNING] MIGRATION PENDING — state references in this file are stale
+> This skill's prerequisite gates read `dashboard.json → active_variables.*`
+> (e.g. `seed_lock`, `style_ref_id`, `master_palette`, `audio_bpm`). Per
+> **DECISIONS.md § D6** that key no longer holds durable state — it is run-scoped
+> and disposable. Project state now lives in the task's **Content MD**
+> (`vault/SCHEMA.md`), read at intercept step 4 and written at step 8.
+>
+> Until this file is rewritten, treat every `dashboard.active_variables.X` gate
+> below as **"the corresponding value in this task's Content MD
+> `## Decisions in Force` or `## Method`"**, and every "ask the operator" as the
+> mode gate in `Router.md` §5. Do not restore values to `active_variables` to
+> satisfy a gate literally.
+
 ---
 
 ## 0. ROUTING HEADER (Part 1 of 4)

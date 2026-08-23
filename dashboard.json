@@ -1,10 +1,10 @@
 {
   "meta": {
-    "schema_version": "1.2.0",
+    "schema_version": "1.0.0",
     "system_name": "STUDIO HEADLESS OS",
     "operator": "Studio Lead",
     "generated": "2026-07-01T00:00:00Z",
-    "layout_note": "Core files at root; skills/ (8), context/brand/ (10 gates, unauthored), context/domain/ (10 libraries)."
+    "file_count_target": 22
   },
   "system_status": {
     "state": "BLOCKED",
@@ -20,16 +20,15 @@
       "supervised",
       "manual"
     ],
-    "last_heartbeat": "2026-08-23T15:20:00Z",
-    "router_version": "1.1",
+    "last_heartbeat": "2026-08-23T18:30:00Z",
+    "router_version": "1.0",
     "intercept_violations_24h": 0,
     "active_skill": null,
     "context_loaded": [],
-    "blocked_reason": "context/brand/*.context.md not authored \u2014 10 mandatory gates missing (Router.md \u00a77). Author them to unblock routing."
+    "blocked_reason": "Every \u00a73 context resolves to L3 UNRESOLVED: no context/brand/*.context.md authored, and vault/ holds no Content MDs to recall (L1) or derive from (L2 needs >=3). Per \u00a75 the Router parks in every mode, autonomous included."
   },
   "hardware": {
     "host": "Mac Studio M3 Ultra",
-    "host_os": "macos",
     "unified_memory_gb": 192,
     "memory_pressure": "green",
     "memory_pressure_enum": [
@@ -37,17 +36,14 @@
       "yellow",
       "red"
     ],
-    "compute_node": {
+    "egpu": {
       "status": "attached",
       "status_enum": [
         "attached",
         "detached",
         "error"
       ],
-      "role": "CUDA render/compute node reached over LAN \u2014 NOT a Thunderbolt eGPU (Apple silicon has no eGPU support)",
       "model": "External Compute Node",
-      "os": "linux",
-      "gpu": "NVIDIA (nvidia-smi)",
       "vram_gb": 48,
       "vram_used_gb": 11.2,
       "thermal": "nominal"
@@ -115,26 +111,14 @@
       "review",
       "blocked",
       "complete"
-    ]
+    ],
+    "_note": "Live execution state for the current run. Project memory lives in vault/ as Content MDs, not here."
   },
   "active_variables": {
-    "character_uuid": "chr_7f3a9d2e-aurora-lead",
-    "environment_uuid": "env_c4b81f00-neon-harbor",
-    "seed_lock": 448811,
-    "style_ref_id": "sref_ff_20260630_114a",
-    "motion_vector_preset": "dolly_in_slow_02",
-    "audio_bpm": 128,
-    "audio_key": "F minor",
-    "master_palette": [
-      "#0B0E17",
-      "#F2A33C",
-      "#3EE0CF",
-      "#E84D6F",
-      "#C9CEDB"
-    ],
-    "aspect_ratio": "21:9",
-    "fps": 24,
-    "style_ref_id_prev": "sref_ff_20260628_09c1"
+    "_note": "Run-scoped only. Disposable between runs. Anything that must survive to the next session belongs in the task's Content MD (Router.md \u00a78).",
+    "content_md": null,
+    "resolved_context": [],
+    "provisional_constraints": []
   },
   "registries": {
     "skills": [
@@ -179,7 +163,7 @@
         "status": "ready"
       }
     ],
-    "context_note": "Router.md \u00a73 gates resolve to context/brand/<name>.context.md. Those are brand constants and are NOT YET AUTHORED, so every route halts as blocked per \u00a74/\u00a77 \u2014 correct behavior, not a bug. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
+    "context_note": "Router.md \u00a73 gates resolve to context/brand/<name>.context.md at L0. None is authored, and vault/ has no Content MDs, so L1/L2 cannot resolve either \u2014 every route parks at L3 per \u00a75. That is correct behavior, not a bug. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
     "context_brand_gates": [
       {
         "role": "visual_identity",
@@ -285,10 +269,10 @@
   },
   "event_log": [
     {
-      "ts": "2026-08-23T15:20:00Z",
+      "ts": "2026-08-23T18:30:00Z",
       "actor": "router",
-      "event": "ROUTE_BLOCKED",
-      "detail": "ph_03 higgsfield_api \u2192 missing brand gates: motion_language, narrative_continuity, visual_identity"
+      "event": "PARKED",
+      "detail": "ph_03 higgsfield_api \u2192 L3 UNRESOLVED: motion_language, narrative_continuity, visual_identity. Resolve by authoring context/brand/<name>.context.md. content_md: null (no vault note \u2014 nothing to write back into)"
     },
     {
       "ts": "2026-07-01T09:42:11Z",

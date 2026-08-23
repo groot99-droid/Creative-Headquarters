@@ -188,15 +188,38 @@ def check_router_js(d, roles):
 
 
 def check_palette_parity(d):
-    """css_html_ui P3: control_room.html tokens must mirror the dashboard palette."""
-    palette = [c.upper() for c in d["active_variables"]["master_palette"]]
+    """css_html_ui ARTIFACT A is the 'ABSOLUTE SOURCE OF TRUTH' for tokens.
+
+    active_variables used to carry master_palette; it is run-scoped now (DECISIONS.md D6),
+    so the token dictionary in the skill file is the thing the UI must still mirror.
+    """
+    skill = ROOT / "skills" / "css_html_ui.skill.md"
+    if not skill.exists():
+        fail("skills/css_html_ui.skill.md missing — cannot check token parity")
+        return
+    text = skill.read_text()
+    want = {}
+    for key in ("base", "raise", "panel"):
+        m = re.search(r'"bg":\s*\{[^}]*"%s":\s*"(#[0-9A-Fa-f]{6})"' % key, text)
+        if m:
+            want["bg" if key == "base" else "bg-" + key] = m.group(1).upper()
+    for key in ("amber", "cyan", "alert", "queued"):
+        m = re.search(r'"accent":\s*\{[^}]*"%s":\s*"(#[0-9A-Fa-f]{6})"' % key, text)
+        if m:
+            want[key] = m.group(1).upper()
+    if not want:
+        warn("could not parse the token dictionary from css_html_ui ARTIFACT A")
+        return
+
     css = (ROOT / "control_room.html").read_text()
-    tokens = dict(re.findall(r"--([a-z-]+):\s*(#[0-9A-Fa-f]{6})", css))
-    core = [tokens.get(k, "").upper() for k in ("bg", "amber", "cyan", "alert", "ink")]
-    if core != palette:
-        fail(f"token/palette drift: control_room.html {core} != master_palette {palette}")
+    have = {k: v.upper() for k, v in re.findall(r"--([a-z-]+):\s*(#[0-9A-Fa-f]{6})", css)}
+    drift = {k: (v, have.get(k)) for k, v in want.items() if have.get(k) != v}
+    if drift:
+        for k, (expected, actual) in sorted(drift.items()):
+            fail(f"token drift: --{k} is {actual} in control_room.html, "
+                 f"{expected} in css_html_ui ARTIFACT A")
     else:
-        ok("control_room.html tokens mirror active_variables.master_palette")
+        ok(f"control_room.html mirrors all {len(want)} css_html_ui ARTIFACT A tokens")
 
 
 def check_pipeline(d):
@@ -234,6 +257,20 @@ def check_context_loaded(d, roles):
         elif r not in authored:
             fail(f"system_status.context_loaded claims '{r}' is loaded, but it is not authored")
     ok("system_status.context_loaded claims only authored gates")
+
+    # §5: with nothing authored and no vault notes, every context lands at L3, which parks.
+    st = d["system_status"]
+    unauthored = [g["role"] for g in d["registries"]["context_brand_gates"] if not g.get("authored")]
+    vault = ROOT / "vault"
+    notes = [f for f in vault.rglob("*.md")
+             if vault in f.parents and not any(part.startswith("_") for part in f.relative_to(vault).parts)
+             and f.name not in ("README.md", "SCHEMA.md")] if vault.exists() else []
+    if unauthored and not notes and st.get("state") != "BLOCKED":
+        fail(f"{len(unauthored)} gates unauthored and no vault notes to recall or derive from, "
+             f"so every route parks at L3 — but system_status.state is {st.get('state')!r}")
+    elif unauthored and not notes:
+        ok(f"state BLOCKED is consistent with L3: {len(unauthored)} gates unauthored, "
+           f"{len(notes)} vault notes available")
 
 
 def check_event_log(d):
