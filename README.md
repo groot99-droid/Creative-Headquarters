@@ -1,11 +1,16 @@
 # Studio Headless OS
 
-A creative-studio control plane: a routing protocol that refuses to execute work
-without its governing context loaded, a set of executable skill definitions, the
-tools those skills drive, and a knowledge engine meant to give the whole thing
-memory.
+A creative engine that remembers your work.
 
-This repository consolidates what were four separate repos.
+Every time it makes something — a character, a design, an audio piece, a brush —
+it writes a **Content MD**: the exact steps that produced it, the decisions in
+force, and what happens next. Those notes live in an Obsidian vault you edit
+directly. Come back a week later and the note is the memory: read it cold, pick up
+where you left off. Come back after fifty of them and the vault is a corpus the
+system grounds new work in — your precedent, not a generic model's guess.
+
+The hub renders the vault as a cosmos of everything you have made, and for any
+piece of it: what this is, and what to do next.
 
 ---
 
@@ -19,11 +24,13 @@ router.js            Polls dashboard.json → DOM. API routing is still stubs.
 DECISIONS.md         Architecture decisions in force. Read before changing direction.
 
 skills/              8 skill definitions, Four-Part Artifact Architecture.
-context/brand/       10 Router-mandatory gate files. NOT YET AUTHORED.
+context/brand/       10 constants named by the routing table. Unauthored — resolved
+                     from the vault meanwhile (Router §5).
 context/domain/      10 reference libraries, 216 lines each.
+vault/               THE SOURCE OF TRUTH. Content MDs; see vault/SCHEMA.md.
 agents/              9 sub-executor definitions.
 tools/brush-designer/  Procreate brush generator. Runs standalone today.
-archive/             Living Archive Engine — the intended memory layer.
+archive/             Indexes the vault for search and the cosmos view.
 ```
 
 ---
@@ -50,12 +57,15 @@ but this has not been installed, built, or started. `backend/requirements.txt`
 and `backend/Dockerfile` were newly written from the import graph in this pass
 and have never been exercised. Treat first boot as debugging, not as a smoke test.
 
-**Any routed task.** `Router.md` §3 requires ten context files under
-`context/brand/` that have never been written. §7 forbids inventing their
-contents and §4 requires setting the phase to `blocked` when one is missing — so
-every route halts by design until they exist. `context/brand/README.md` specifies
-what each of the ten must answer. This is the single largest thing standing
-between the repo and a working system, and it is authorship, not engineering.
+**Any routed task.** The protocol is specified end to end — mode gate, resolution
+ladder, attestation, Content MD emission — but nothing executes it yet. There is no
+vault indexer, no skill has a Content MD step wired in, and `router.js`'s dispatch
+is still stubs. `Router.md` is a contract an agent reads and obeys; it is not code,
+and no code implements it.
+
+The ten `context/brand/` constants are still unauthored, but that is no longer
+blocking: §5's ladder resolves them from the vault, marked provisional. Authoring
+one promotes it to exact.
 
 ---
 
@@ -72,22 +82,26 @@ missing that project's five core modules. See DECISIONS.md § D3.
 
 ---
 
-## The idea
+## The loop
 
-Creative-HQ was an orchestration layer with nothing to orchestrate. The brush
-designer was a working tool with nothing driving it. The Living Archive was a
-memory system with no one remembering into it. Each was inert alone.
+```
+input → route to skill (§2-3) → resolve context (§5) → read Content MD (§7)
+      → execute → write artifact → update Content MD → index into the cosmos
+                                            ↑                        │
+                                            └── precedent for next ───┘
+```
 
-The loop they close together: a task is intercepted and routed, its governing
-context is loaded and attested, a skill executes and produces a real artifact,
-the run is written back to `dashboard.json`, and that record is ingested into the
-archive — where it is classified, embedded, and made retrievable, so the next
-route can draw on what the last one learned.
+Output is a function of the input and the matched context, nothing else. The
+Router's job is to find the right context and refuse to fill gaps from general
+knowledge. Context resolves from an authored file, a decision recalled from a past
+note, or precedent derived across past work — always sourced, always stated.
 
-The brush designer is the proof that a skill can actually execute and produce a
-file. The archive is what turns a router into something that gets better.
+In `autonomous` mode the system never waits on a person. A task it cannot ground
+gets parked with a written reason in its Content MD and the next one routed. The
+work stops; the system does not.
 
-**None of that loop is wired yet.** This pass was consolidation and structural
-repair only: one repo, correct directory structure, verified import graphs,
-decisions written down. The integration work is specified in DECISIONS.md and
-`context/brand/README.md`, and has not been started.
+The brush designer is the proof a skill can actually execute and produce a file —
+52 parameters, entirely local, no API cost. The vault is what makes the system get
+better. Each closes the other's gap.
+
+**The loop is specified, not built.** See DECISIONS.md for what is decided and why.

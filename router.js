@@ -92,7 +92,7 @@ function renderVariables(v) {
   const box = $("vars");
   box.innerHTML = "";
   for (const [key, val] of Object.entries(v)) {
-    if (key.endsWith("_prev")) continue; // superseded continuity values stay in JSON, not UI
+    if (key.endsWith("_prev")) continue; // legacy key shape; active_variables is run-scoped now (DECISIONS.md D6)
     const k = document.createElement("div"); k.className = "k"; k.textContent = key.replace(/_/g, " ");
     const vEl = document.createElement("div"); vEl.className = "v";
     if (key === "master_palette" && Array.isArray(val)) {

@@ -133,3 +133,89 @@ placeholders.
 `archive/backend/app/config.py` reads every secret from the environment with empty
 defaults and `docker-compose.yml` passes them through as `${GROQ_API_KEY}`, so
 `.env` is the only place a real value belongs. `.gitignore` now covers it.
+
+---
+
+## D6 — The unit of memory is the Content MD, not a live variable ledger
+
+**Superseded:** the reading in the merged consolidation that
+`dashboard.json → active_variables` (`character_uuid`, `seed_lock`,
+`style_ref_id`, `style_ref_id_prev`) was a spec for persistent creative identity
+threaded across tool calls. Those were sample values, never a design. Router §6's
+"never delete a key; supersede with `_prev`" rule was built for that reading and
+is removed with it.
+
+**In force:** every task reads and writes exactly one **Content MD** — a markdown
+note recording the exact steps that made one thing, living in an Obsidian vault
+the author edits directly. Full spec: `vault/SCHEMA.md`.
+
+The properties that follow from it:
+
+- **No session state survives between tasks.** A Content MD is read cold and must
+  be sufficient to resume. That constraint is what keeps the notes honest: what the
+  file does not say is genuinely lost, so the file says it.
+- **The vault is the source of truth; the archive indexes it.** Not the reverse.
+  The work stays readable, diffable, and portable with none of this running.
+- **Self-learning is corpus growth.** Past Content MDs are precedent — what was
+  made, decided, rejected — and that is what §5's ladder derives from. Nothing
+  learns weights; the system gets better because the record gets richer.
+- **The cosmos view is the vault rendered.** `GraphVisualization.jsx` over notes
+  and their links, `NodeDetail.jsx` showing Overview + Next Steps for whatever is
+  selected.
+
+`dashboard.json → active_variables` now holds run-scoped state only, with a `_note`
+saying so.
+
+---
+
+## D7 — The Router is mode-aware; autonomous never waits on a human
+
+`dashboard.json` declared `"mode": "autonomous"` with a three-value enum that
+`Router.md` never read. Its only escape hatch was an unconditional *"ask the
+operator"* — a supervised design wearing an autonomous label.
+
+**In force:** §4 reads the mode, and §5 defines a four-level **context resolution
+ladder** — L0 authored file, L1 recalled decision, L2 derived precedent, L3
+nothing — with a per-mode gate on what happens at each level.
+
+The reframing that makes autonomy coherent: **autonomous does not mean it never
+stops; it means it never waits.** When a task cannot be grounded, the Router writes
+the blocker into the Content MD's Next Steps, sets `status: blocked`, and routes
+the next task. The work stops. The system does not. A human returning later reads
+why, in the note.
+
+Two floors hold in every mode, autonomy included:
+
+- **L3 parks in every mode.** No authored file, no recalled decision, no precedent
+  means nothing to ground on — and output not grounded in input plus matched
+  context is not this system's output. Parking is the correct result.
+- **Derived is never presented as authored.** L2 constraints carry their confidence
+  and their sources into the attestation and into the Content MD. Deriving is
+  permitted; laundering the provenance is refused.
+
+This also resolves the `context/brand/` blocker from the consolidation. Those ten
+files being unauthored no longer halts every route — the ladder resolves them from
+the vault, and authoring one promotes it to L0 permanently.
+
+### D6 addendum — five skill files carry stale state references
+
+`active_variables` becoming run-scoped broke assumptions in five of the eight
+skills, which gate execution on it and HALT on mismatch:
+
+| skill | stale gate |
+|---|---|
+| `adobe_firefly` | V1 `style_ref_id` ledger check, V2 `master_palette` lock, §2.7 `_prev` supersede |
+| `higgsfield_api` | V1 `character_uuid` vs. continuity state machine, `seed_lock`, `aspect_ratio` |
+| `blender_python` | V1 `fps`/`aspect_ratio` parity, `seed_lock` → deterministic geometry |
+| `css_html_ui` | P3 design-token parity against `master_palette` |
+| `suno_audio` | V1 `audio_bpm`/`audio_key` continuity locks |
+
+Each now carries a MIGRATION PENDING banner: read those gates against the task's
+Content MD (`## Decisions in Force`, `## Method`) rather than the dashboard, and
+read "ask the operator" as §5's mode gate. **Do not repopulate `active_variables`
+to satisfy a gate literally** — that reintroduces exactly the layer D6 removes.
+
+Rewriting the five properly is deferred: each needs its Four-Part Architecture
+reworked around Content MD read/write, and doing that before one skill has been
+run end to end would be guessing at the shape. `brush_designer` should be written
+first as the reference implementation, then these five follow its pattern.
