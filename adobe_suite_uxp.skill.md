@@ -10,7 +10,7 @@ skill_id: adobe_suite_uxp
 version: 1.0
 trigger_a: ["photoshop", "premiere", "after effects", "comp", "batch edit", "export layers", "grade"]
 trigger_b: [".psd", ".psb", ".aep", ".prproj", ".jsx", "pipeline phase status: compositing"]
-mandatory_context: [render_philosophy, color_science]
+mandatory_context: [render_philosophy, color_science, system_fabric]
 writes_dashboard_keys: [pipeline.phases[*].progress_pct]
 danger_class: LOCAL_DESTRUCTIVE   # scripts mutate real project files — originals are sacred
 ```

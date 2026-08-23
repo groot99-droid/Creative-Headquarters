@@ -29,9 +29,11 @@ Run every check. Any failure → set pipeline phase to `blocked`, log to `event_
 grep -q "ROUTER INTERCEPT" ./.task_scratch/attestation.txt || echo "FAIL:P1 no attestation"
 
 # P2 — Credentials present (never echo the key itself)
-[ -n "$HIGGSFIELD_API_KEY" ] && echo "OK:P2" || echo "FAIL:P2 missing HIGGSFIELD_API_KEY"
+[ -n "${HIGGSFIELD_API_KEY:-}" ] && echo "OK:P2" || echo "FAIL:P2 missing HIGGSFIELD_API_KEY"
 
-# P3 — Endpoint reachable
+# P3 — Endpoint reachable. HIGGSFIELD_BASE_URL is optional; this default is the
+#      same origin router.js registers for the "higgsfield" service.
+HIGGSFIELD_BASE_URL="${HIGGSFIELD_BASE_URL:-https://platform.higgsfield.ai}"
 curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$HIGGSFIELD_BASE_URL/health" | grep -qE "200|401" \
   && echo "OK:P3" || echo "FAIL:P3 endpoint unreachable"
 
@@ -39,7 +41,9 @@ curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$HIGGSFIELD_BASE_URL/health
 python3 -c "import json;json.load(open('state/continuity_sm.json'))" && echo "OK:P4" || echo "FAIL:P4"
 
 # P5 — Compute gate: this skill is API-bound, but frame extraction for i2v needs disk headroom
-df -g . | awk 'NR==2 {exit ($4 < 20)}' && echo "OK:P5 disk" || echo "FAIL:P5 <20GB free"
+# df -g is BSD-only; -Pk is POSIX everywhere and -P stops long device names
+# from wrapping onto a second line (which silently shifted the NR==2 fields).
+df -Pk . | awk 'NR==2 {exit (int($4/1048576) < 20)}' && echo "OK:P5 disk" || echo "FAIL:P5 <20GB free"
 ```
 
 State verification (agent-level, not shell):

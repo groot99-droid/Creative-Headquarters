@@ -10,7 +10,7 @@ skill_id: css_html_ui
 version: 1.0
 trigger_a: ["UI", "dashboard", "component", "landing page", "DOM", "front-end", "panel", "widget"]
 trigger_b: [".html", ".css", ".jsx(web)", "pipeline phase skill=css_html_ui"]
-mandatory_context: [typography_system, visual_identity, brand_voice]
+mandatory_context: [typography_system, visual_identity, brand_voice, system_fabric]
 writes_dashboard_keys: [pipeline.phases[*].progress_pct]
 danger_class: LOW   # but style drift is BRAND damage — tokens are law
 ```
@@ -39,7 +39,11 @@ print("OK:P3" if [c.upper() for c in core]==[c.upper() for c in d] else "FAIL:P3
 PY
 
 # P4 — Lint target exists for edits (never mutate a file you haven't read this task)
-[ -z "$TARGET_FILE" ] || [ -f "$TARGET_FILE" ] && echo "OK:P4" || echo "FAIL:P4 target missing"
+if [ -z "${TARGET_FILE:-}" ] || [ -f "${TARGET_FILE}" ]; then
+  echo "OK:P4"
+else
+  echo "FAIL:P4 target missing: $TARGET_FILE"
+fi
 ```
 
 State verification (agent-level):

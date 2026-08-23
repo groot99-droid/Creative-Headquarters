@@ -1,10 +1,11 @@
 {
   "meta": {
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "system_name": "STUDIO HEADLESS OS",
     "operator": "Studio Lead",
     "generated": "2026-07-01T00:00:00Z",
-    "file_count_target": 22
+    "protocol_file_count": 22,
+    "protocol_file_count_note": "4 core (Router.md, dashboard.json, control_room.html, router.js) + 8 skills + 10 context. README.md and tools/ are not protocol files."
   },
 
   "system_status": {
@@ -13,7 +14,7 @@
     "mode": "autonomous",
     "mode_enum": ["autonomous", "supervised", "manual"],
     "last_heartbeat": "2026-07-01T09:42:11Z",
-    "router_version": "1.0",
+    "router_version": "1.1",
     "intercept_violations_24h": 0,
     "active_skill": "higgsfield_api",
     "context_loaded": ["motion_language", "narrative_continuity", "visual_identity"]
@@ -21,13 +22,17 @@
 
   "hardware": {
     "host": "Mac Studio M3 Ultra",
+    "host_os": "macos",
     "unified_memory_gb": 192,
     "memory_pressure": "green",
     "memory_pressure_enum": ["green", "yellow", "red"],
-    "egpu": {
+    "compute_node": {
       "status": "attached",
       "status_enum": ["attached", "detached", "error"],
+      "role": "CUDA render/compute node reached over LAN — NOT a Thunderbolt eGPU (Apple silicon has no eGPU support)",
       "model": "External Compute Node",
+      "os": "linux",
+      "gpu": "NVIDIA (nvidia-smi)",
       "vram_gb": 48,
       "vram_used_gb": 11.2,
       "thermal": "nominal"
@@ -80,17 +85,34 @@
       { "file": "local_rag_orchestration.skill.md", "domain": "Local RAG / DeepSeek-R1", "status": "ready" },
       { "file": "hardware_compute.skill.md", "domain": "Compute verification & allocation", "status": "ready" }
     ],
-    "context": [
-      { "file": "visual_identity.context.md", "loaded": true },
-      { "file": "motion_language.context.md", "loaded": true },
-      { "file": "sound_identity.context.md", "loaded": false },
-      { "file": "narrative_continuity.context.md", "loaded": true },
-      { "file": "color_science.context.md", "loaded": false },
-      { "file": "typography_system.context.md", "loaded": false },
-      { "file": "render_philosophy.context.md", "loaded": false },
-      { "file": "brand_voice.context.md", "loaded": false },
-      { "file": "pipeline_ethics.context.md", "loaded": false },
-      { "file": "memory_discipline.context.md", "loaded": false }
+
+    "context_binding_note": "SINGLE SOURCE OF TRUTH for Router.md §3.1. Skills declare abstract context ROLES; roles resolve to real files on disk through this map. router.js reads it at runtime — never hard-code a role→file pair anywhere else.",
+
+    "context_roles": {
+      "visual_identity":       ["classical_illustration_context.md"],
+      "motion_language":       ["cinematic_videography_context.md"],
+      "sound_identity":        ["music_ambience_context.md"],
+      "narrative_continuity":  ["creative_analytical_writing_context.md", "world_building_context.md"],
+      "color_science":         ["classical_illustration_context.md", "cinematic_videography_context.md"],
+      "typography_system":     ["typography_ad_arts_context.md"],
+      "render_philosophy":     ["digital_3d_motion_context.md"],
+      "brand_voice":           ["social_media_marketing_context.md"],
+      "system_fabric":         ["multimedia_fusion_context.md"],
+      "pipeline_ethics":       ["ai_creative_strategies_context.md"],
+      "memory_discipline":     ["ai_creative_strategies_context.md"]
+    },
+
+    "context_files": [
+      { "file": "classical_illustration_context.md",       "roles": ["visual_identity", "color_science"],        "loaded": true },
+      { "file": "cinematic_videography_context.md",        "roles": ["motion_language", "color_science"],        "loaded": true },
+      { "file": "music_ambience_context.md",               "roles": ["sound_identity"],                          "loaded": false },
+      { "file": "creative_analytical_writing_context.md",  "roles": ["narrative_continuity"],                    "loaded": true },
+      { "file": "world_building_context.md",               "roles": ["narrative_continuity"],                    "loaded": true },
+      { "file": "typography_ad_arts_context.md",           "roles": ["typography_system"],                       "loaded": false },
+      { "file": "digital_3d_motion_context.md",            "roles": ["render_philosophy"],                       "loaded": false },
+      { "file": "social_media_marketing_context.md",       "roles": ["brand_voice"],                             "loaded": false },
+      { "file": "multimedia_fusion_context.md",            "roles": ["system_fabric"],                           "loaded": false },
+      { "file": "ai_creative_strategies_context.md",       "roles": ["pipeline_ethics", "memory_discipline"],    "loaded": false }
     ]
   },
 

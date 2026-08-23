@@ -27,7 +27,10 @@ R1 is a reasoning model with a long visible `<think>` phase. It is powerful and 
 grep -q "ROUTER INTERCEPT" ./.task_scratch/attestation.txt || echo "FAIL:P1"
 
 # P2 — Endpoint live + model resident
-curl -s --max-time 6 http://localhost:11434/api/tags \
+# Endpoint comes from dashboard state, never a literal — hardware.local_llm.endpoint
+# is the single source of truth and it does move (remote node, alternate port).
+RAG_ENDPOINT=$(python3 -c "import json;print(json.load(open('dashboard.json'))['hardware']['local_llm']['endpoint'])")
+curl -s --max-time 6 "$RAG_ENDPOINT/api/tags" \
   | python3 -c "import sys,json;names=[m['name'] for m in json.load(sys.stdin).get('models',[])];exit(0 if any('deepseek-r1' in n for n in names) else 1)" \
   && echo "OK:P2" || echo "FAIL:P2 deepseek-r1 not served"
 

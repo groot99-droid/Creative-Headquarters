@@ -26,15 +26,17 @@ Structural prompting is not optional decoration. Suno's output quality is a dire
 grep -q "ROUTER INTERCEPT" ./.task_scratch/attestation.txt || echo "FAIL:P1"
 
 # P2 — Credentials
-[ -n "$SUNO_API_KEY" ] && echo "OK:P2" || echo "FAIL:P2 missing SUNO_API_KEY"
+[ -n "${SUNO_API_KEY:-}" ] && echo "OK:P2" || echo "FAIL:P2 missing SUNO_API_KEY"
 
 # P3 — Quota check before spend
-curl -s -H "Authorization: Bearer $SUNO_API_KEY" "$SUNO_BASE_URL/api/get_limit" \
+SUNO_BASE_URL="${SUNO_BASE_URL:-https://studio-api.suno.ai}"
+curl -s --max-time 8 -H "Authorization: Bearer ${SUNO_API_KEY:-}" "$SUNO_BASE_URL/api/get_limit" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('credits_left',0) >= 10 else 1)" \
   && echo "OK:P3" || echo "FAIL:P3 insufficient credits"
 
 # P4 — Output directory + no orphan pending jobs
-mkdir -p renders/audio && [ ! -f state/suno_pending.lock ] && echo "OK:P4" || echo "FAIL:P4 pending job lock exists"
+mkdir -p renders/audio || echo "FAIL:P4 cannot create renders/audio"
+[ ! -f state/suno_pending.lock ] && echo "OK:P4" || echo "FAIL:P4 pending job lock exists"
 ```
 
 State verification (agent-level):

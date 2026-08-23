@@ -103,42 +103,45 @@ State verification (agent-level):
 }
 ```
 
-### ARTIFACT B — Surgical Regex Set (run against RAW response text, Python `re`, flags shown)
+### ARTIFACT B — Surgical Regex Set (run against RAW response text, Python `re`)
+
+`"mode"` says which `re` call to use: `findall` for every match (Python has no `g` flag —
+`re.findall`/`re.finditer` *is* the global form), `search` for the single expected match.
 ```json
 {
   "RX_IMAGE_URL": {
     "pattern": "\"url\"\\s*:\\s*\"(https://[^\"]+?)\"",
-    "flags": "g",
+    "mode": "findall",
     "capture": 1,
     "purpose": "presigned output image URLs — download immediately, they expire"
   },
   "RX_SEED": {
     "pattern": "\"seed\"\\s*:\\s*(\\d{1,10})",
-    "flags": "g",
+    "mode": "findall",
     "capture": 1,
     "purpose": "actual seed used per variation — REQUIRED for reproducibility ledger"
   },
   "RX_UPLOAD_ID": {
     "pattern": "\"images\"\\s*:\\s*\\[\\s*\\{\\s*\"id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"",
-    "flags": "",
+    "mode": "search",
     "capture": 1,
     "purpose": "storage upload UUID returned by /v2/storage/image"
   },
   "RX_CONTENT_CLASS": {
     "pattern": "\"contentClass\"\\s*:\\s*\"(photo|art)\"",
-    "flags": "",
+    "mode": "search",
     "capture": 1,
     "purpose": "verify the API honored the requested content class"
   },
   "RX_STYLE_REF_LEDGER_ID": {
     "pattern": "\\bsref_ff_(\\d{8})_([0-9a-f]{4})\\b",
-    "flags": "g",
+    "mode": "findall",
     "capture": 0,
     "purpose": "validate/locate studio-minted style ref ids in any text (dashboard, filenames, notes)"
   },
   "RX_ERROR_CODE": {
     "pattern": "\"error_code\"\\s*:\\s*\"([a-z_]+)\"",
-    "flags": "",
+    "mode": "search",
     "capture": 1,
     "purpose": "classify failures: rate_limited → backoff 30s; validation → fix payload, do not retry blind"
   },
