@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CONTROL ROOM — Studio Headless OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ── Design tokens (mirrors dashboard.json → active_variables.master_palette) ── */
+  :root {
+    --bg:        #0B0E17;
+    --bg-raise:  #121627;
+    --bg-panel:  #161B30;
+    --line:      #232A45;
+    --ink:       #C9CEDB;
+    --ink-dim:   #6E7690;
+    --amber:     #F2A33C;   /* awaiting / warning */
+    --cyan:      #3EE0CF;   /* active / nominal   */
+    --alert:     #E84D6F;   /* blocked / error    */
+    --queued:    #4A5273;   /* queued / idle      */
+    --font-disp: 'Chakra Petch', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: var(--font-mono); font-size: 13px; }
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(1200px 500px at 70% -10%, rgba(62,224,207,0.06), transparent 60%),
+      radial-gradient(900px 400px at 10% 110%, rgba(242,163,60,0.05), transparent 60%);
+    padding: 20px;
+  }
+
+  /* ── Master grid ── */
+  .grid {
+    display: grid;
+    max-width: 1440px;
+    margin: 0 auto;
+    gap: 14px;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-areas:
+      "hd hd hd hd hd hd hd hd hd hd hd hd"
+      "pl pl pl pl pl pl pl pl pl pl pl pl"
+      "vr vr vr vr hw hw hw hw lg lg lg lg"
+      "sk sk sk sk sk sk sk sk lg lg lg lg";
+  }
+  @media (max-width: 980px) {
+    .grid { grid-template-areas: "hd hd hd hd hd hd hd hd hd hd hd hd" "pl pl pl pl pl pl pl pl pl pl pl pl" "vr vr vr vr vr vr hw hw hw hw hw hw" "lg lg lg lg lg lg lg lg lg lg lg lg" "sk sk sk sk sk sk sk sk sk sk sk sk"; }
+  }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; grid-template-areas: "hd" "pl" "vr" "hw" "lg" "sk"; }
+  }
+
+  .panel { grid-area: var(--area); background: var(--bg-panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
+  .panel h2 {
+    font-family: var(--font-disp); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-dim);
+    margin-bottom: 14px; display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .panel h2 .tick { color: var(--cyan); font-family: var(--font-mono); letter-spacing: 0; font-size: 11px; }
+
+  /* ── Header ── */
+  header { --area: hd; grid-area: hd; display: flex; align-items: center; gap: 22px;
+    background: var(--bg-raise); border: 1px solid var(--line); border-radius: 6px; padding: 16px 22px; flex-wrap: wrap; }
+  .brand { font-family: var(--font-disp); font-weight: 700; font-size: 20px; letter-spacing: 0.14em; }
+  .brand em { font-style: normal; color: var(--cyan); }
+  .hd-stat { display: flex; flex-direction: column; gap: 3px; }
+  .hd-stat .k { font-size: 10px; letter-spacing: 0.18em; color: var(--ink-dim); text-transform: uppercase; }
+  .hd-stat .v { font-family: var(--font-disp); font-size: 14px; font-weight: 600; }
+  .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px;
+    background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: pulse 2.4s infinite; }
+  .lamp.warn  { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+  .lamp.alert { background: var(--alert); box-shadow: 0 0 10px var(--alert); }
+  @keyframes pulse { 50% { opacity: 0.45; } }
+  @media (prefers-reduced-motion: reduce) { .lamp { animation: none; } }
+  .spacer { flex: 1; }
+  #heartbeat { color: var(--ink-dim); font-size: 11px; }
+
+  /* ── Pipeline transit rail (signature element) ── */
+  .pipeline { --area: pl; }
+  .rail { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; padding-top: 8px; }
+  .rail::before { content: ""; position: absolute; left: 4%; right: 4%; top: 27px; height: 2px; background: var(--line); }
+  .station { position: relative; text-align: center; padding: 0 8px 4px; }
+  .station .node { position: relative; z-index: 1; width: 16px; height: 16px; margin: 12px auto 10px;
+    border-radius: 50%; border: 2px solid var(--queued); background: var(--bg-panel); }
+  .station .name { font-family: var(--font-disp); font-size: 12px; font-weight: 600; line-height: 1.3; }
+  .station .meta { font-size: 10px; color: var(--ink-dim); margin-top: 3px; letter-spacing: 0.05em; }
+  .station .bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .station .bar i { display: block; height: 100%; width: 0%; background: var(--queued); transition: width .6s ease; }
+
+  .station.s-complete .node        { border-color: var(--cyan); background: var(--cyan); }
+  .station.s-complete .bar i       { background: var(--cyan); }
+  .station.s-in_progress .node,
+  .station.s-compositing .node     { border-color: var(--cyan); box-shadow: 0 0 12px rgba(62,224,207,.5); }
+  .station.s-in_progress .bar i,
+  .station.s-compositing .bar i    { background: var(--cyan); }
+  .station.s-awaiting_render .node { border-color: var(--amber); box-shadow: 0 0 12px rgba(242,163,60,.5); }
+  .station.s-awaiting_render .bar i{ background: var(--amber); }
+  .station.s-blocked .node         { border-color: var(--alert); background: var(--alert); }
+  .station.s-blocked .bar i        { background: var(--alert); }
+  .station.s-review .node          { border-color: var(--ink); }
+
+  .status-word { text-transform: uppercase; letter-spacing: 0.1em; }
+  .c-cyan { color: var(--cyan); } .c-amber { color: var(--amber); }
+  .c-alert { color: var(--alert); } .c-dim { color: var(--ink-dim); }
+
+  /* ── Variables / Hardware / Log / Skills ── */
+  .vars { --area: vr; } .hw { --area: hw; } .log { --area: lg; } .skills { --area: sk; }
+  .kv { display: grid; grid-template-columns: minmax(120px, 40%) 1fr; row-gap: 9px; column-gap: 12px; }
+  .kv .k { color: var(--ink-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; align-self: center; }
+  .kv .v { font-size: 12.5px; word-break: break-all; }
+  .swatches { display: flex; gap: 6px; }
+  .swatches span { width: 22px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+
+  .meter { margin-bottom: 14px; }
+  .meter .row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+  .meter .track { height: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .meter .track i { display: block; height: 100%; background: var(--cyan); width: 0%; transition: width .6s ease; }
+  .meter.warn .track i { background: var(--amber); }
+
+  .log ul { list-style: none; max-height: 340px; overflow-y: auto; }
+  .log li { padding: 8px 0; border-bottom: 1px dashed var(--line); display: grid; gap: 2px; }
+  .log li:last-child { border-bottom: 0; }
+  .log .ev { font-family: var(--font-disp); font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; }
+  .log .ts { font-size: 10px; color: var(--ink-dim); }
+  .log .dt { font-size: 11.5px; color: var(--ink); opacity: .85; }
+
+  .chipset { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--line); background: var(--bg-raise); border-radius: 4px;
+    padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .chip:hover { border-color: var(--cyan); }
+  .chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); }
+  .chip[data-status="busy"] .dot { background: var(--amber); }
+  .chip[data-status="error"] .dot { background: var(--alert); }
+
+  .offline-note { display: none; margin-top: 10px; color: var(--amber); font-size: 11px; }
+  body.offline .offline-note { display: block; }
+</style>
+</head>
+<body>
+  <main class="grid">
+
+    <header>
+      <div class="brand">STUDIO<em>//</em>HEADLESS OS</div>
+      <div class="hd-stat"><span class="k">System</span><span class="v"><span class="lamp" id="lamp"></span><span id="sys-state">—</span></span></div>
+      <div class="hd-stat"><span class="k">Mode</span><span class="v" id="sys-mode">—</span></div>
+      <div class="hd-stat"><span class="k">Active skill</span><span class="v c-cyan" id="sys-skill">—</span></div>
+      <div class="hd-stat"><span class="k">Project</span><span class="v" id="sys-project">—</span></div>
+      <div class="spacer"></div>
+      <div id="heartbeat">heartbeat —</div>
+    </header>
+
+    <section class="panel pipeline" aria-label="Pipeline phases">
+      <h2>Pipeline Rail <span class="tick" id="phase-count"></span></h2>
+      <div class="rail" id="rail"><!-- stations injected by router.js --></div>
+      <p class="offline-note">⚠ dashboard.json unreachable — showing last known state. If opened via file://, run a local server (e.g. <code>python3 -m http.server</code>).</p>
+    </section>
+
+    <section class="panel vars" aria-label="Active variables">
+      <h2>Active Variables <span class="tick">continuity locks</span></h2>
+      <div class="kv" id="vars"></div>
+    </section>
+
+    <section class="panel hw" aria-label="Hardware monitor">
+      <h2>Compute <span class="tick" id="hw-host"></span></h2>
+      <div id="hw-meters"></div>
+      <div class="kv" id="hw-facts"></div>
+    </section>
+
+    <section class="panel log" aria-label="Event log">
+      <h2>Event Log <span class="tick">router writeback</span></h2>
+      <ul id="log"></ul>
+    </section>
+
+    <section class="panel skills" aria-label="Skill registry">
+      <h2>Skill Registry <span class="tick">8 executables</span></h2>
+      <div class="chipset" id="skills"></div>
+    </section>
+
+  </main>
+
+  <script src="router.js"></script>
+</body>
+</html>
