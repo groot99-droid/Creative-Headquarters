@@ -29,9 +29,14 @@ context/brand/       10 constants named by the routing table. Unauthored — res
 context/domain/      10 reference libraries, 216 lines each.
 vault/               THE SOURCE OF TRUTH. Content MDs; see vault/SCHEMA.md.
 agents/              9 sub-executor definitions.
+tools/bootstrap.sh   First boot: preflight, extract the probe, report what can run.
+tools/hw/            Gate machinery — evaluate_gate.py mints or denies the compute token,
+                     test_gate.py pins its verdicts. verify_compute.sh is generated.
 tools/brush-designer/  Procreate brush generator. Runs standalone today.
 archive/             Indexes the vault for search and the cosmos view.
 ```
+
+**Setting it up on the machine: [BOOT.md](BOOT.md).**
 
 ---
 
@@ -79,7 +84,12 @@ lets one proceed on context that was never loaded.
 
 ```bash
 python3 tools/verify_system.py     # exits non-zero on any drift
+python3 tools/hw/test_gate.py      # pins the gate's verdicts against ARTIFACT B
 ```
+
+Both run in CI on every push and pull request (`.github/workflows/verify.yml`), along
+with a check that ARTIFACT A still extracts and parses as bash — it is executable content
+embedded in a markdown file, and nothing else would notice if an edit broke it.
 
 It checks that every registered skill exists, every brand gate declares the correct
 `context/brand/<role>.context.md` path and that its `authored` flag matches what is
@@ -123,7 +133,9 @@ workload class and a 30-minute TTL; **one token authorizes one job** — the con
 skill stamps `consumed_by` and the token is spent.
 
 `verify_compute.sh` detects which shell it was invoked from and probes accordingly; it
-emits one JSON object and mutates nothing. A metric it cannot read comes back `null` and
+emits one JSON object and mutates nothing. `tools/hw/evaluate_gate.py` turns that probe
+into a verdict — reading the thresholds out of ARTIFACT B at run time rather than keeping
+a second copy, so the skill file stays the source of truth. A metric it cannot read comes back `null` and
 evaluates to **fail**, never to pass-by-default. An unverifiable gate is a closed gate.
 
 Three things this laptop made into gates that the two-machine studio never needed:

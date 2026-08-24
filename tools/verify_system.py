@@ -195,6 +195,29 @@ def check_host_portability(d):
     ok(f"all 8 skills declare host_kinds within {sorted(supported)} and invoke no macOS-only binary")
 
 
+def check_extracted_probe():
+    """tools/hw/verify_compute.sh is generated from ARTIFACT A. It must still match.
+
+    The failure this prevents is the oldest one in the book: the probe is extracted once,
+    then debugged in place on the studio machine, and the skill file — which every future
+    extraction reads — keeps the broken original. The extracted copy is gitignored, so
+    this only fires on a machine that has actually bootstrapped.
+    """
+    extracted = ROOT / "tools" / "hw" / "verify_compute.sh"
+    if not extracted.exists():
+        return                      # not bootstrapped here; nothing to drift
+    skill = (ROOT / "skills" / "hardware_compute.skill.md").read_text()
+    m = re.search(r"### ARTIFACT A.*?\n```bash\n(.*?)\n```", skill, re.S)
+    if not m:
+        fail("ARTIFACT A not found in hardware_compute.skill.md")
+        return
+    if extracted.read_text().strip() != m.group(1).strip():
+        fail("tools/hw/verify_compute.sh has drifted from ARTIFACT A — edit the skill "
+             "file and re-run tools/bootstrap.sh; the extracted copy is not the source")
+    else:
+        ok("extracted probe matches ARTIFACT A")
+
+
 def check_router_md(d, roles):
     """Router.md §3 names the gates; the dashboard declares them. Mirrors go stale."""
     text = (ROOT / "Router.md").read_text()
@@ -359,6 +382,7 @@ def main():
     check_domain_libraries(d, contexts)
     check_skill_headers(d, roles)
     check_host_portability(d)
+    check_extracted_probe()
     check_router_md(d, roles)
     check_router_js(d, roles)
     check_palette_parity(d)

@@ -286,17 +286,46 @@ enum, no skill may invoke a macOS-only binary or carry an `/Applications/` path 
 code fence, and no skill may set `cycles.device = "GPU"` while `hardware.gpu.cuda` is
 false. Run against the pre-port files it reports 8 failures; against the ported tree, 0.
 
+**Made executable in a follow-up pass.** The gate was specified but not runnable:
+ARTIFACT B said "compare probe JSON against these thresholds" to an agent reading the
+file, and nothing executed it. First boot needed that to be a mechanism.
+
+- `tools/bootstrap.sh` — preflight (shell kind, hard vs. soft prerequisites, Ollama
+  reachability including the WSL gateway retarget, COM registration via `Test-Path` on the
+  registry rather than `New-Object`, which would launch Photoshop), extracts ARTIFACT A,
+  runs it, and surveys every workload class.
+- `tools/hw/evaluate_gate.py` — parses ARTIFACT B out of the skill at run time and mints
+  or denies the token. Implements `null_law`, `thermal_law` (either reading suffices,
+  neither does not), `host_law` and `single_flight_law`. No second copy of the thresholds
+  exists, so the evaluator cannot drift from the skill.
+- `tools/hw/test_gate.py` — ten cases pinning the verdicts that matter on this machine:
+  AC required for sustained work, throttling denied, one readable thermal reading enough,
+  a discrete GPU or a macOS host refused, a live token blocking a second workload.
+- `tools/reconcile_models.py` — compares the tier registry against Ollama's `/api/tags`
+  and reports drift; `--write` applies it. It excludes models outside a tier's parameter
+  range (a 70B is not "md but slower" on 16 GB — it does not load) and never picks
+  silently.
+- `.github/workflows/verify.yml` — runs both checkers on every push and PR, plus an
+  extract-and-`bash -n` of ARTIFACT A. It is executable content living in a markdown file;
+  nothing else would notice if an edit broke its syntax.
+- `verify_system.py` also now fails if `tools/hw/verify_compute.sh` has drifted from
+  ARTIFACT A — the extracted copy is gitignored precisely because debugging it in place
+  and leaving the skill file broken is the obvious failure mode.
+- `BOOT.md` — the runbook, including why a clean bootstrap still reports `BLOCKED`.
+
 **Not yet done.**
 
-- `hardware.local_llm.tiers` carries **provisional** model tags (`llama3.1:8b`,
-  `mistral-nemo:12b`, `nomic-embed-text`). They describe the shape of the registry, not a
-  verified inventory of this machine. Run `ollama list` and correct them; P2b fails loudly
-  on a mismatch rather than substituting a model, so a wrong tag parks the task instead of
-  answering from the wrong weights.
+- `hardware.local_llm.tiers` still carries **provisional** model tags (`llama3.1:8b`,
+  `mistral-nemo:12b`, `nomic-embed-text`). `reconcile_models.py` exists to correct them but
+  has only been run against a stub endpoint; the real inventory is unknown until someone
+  runs `ollama list` on the machine.
 - The probe has been syntax-checked and exercised on Linux, where it emits valid JSON.
   Its Windows and WSL branches — every `psq` query, the WSL gateway rewrite, the
   `wslpath` handoff — have **never been run on the target machine**. Treat first boot as
-  debugging, not as a smoke test.
+  debugging, not as a smoke test. The same is true of bootstrap's COM-registration probe.
+- The system remains `BLOCKED` after bootstrap, and correctly so: ten brand gates are
+  unauthored and the vault is empty, so §5's ladder parks every route at L3. Authoring
+  them encodes taste and prior decisions, which is exactly what cannot be generated.
 - `archive/` still ships `docker-compose.yml` and a cloud stack (§ D1). Docker Desktop on
   16 GB competes directly with both Ollama and Adobe; the local-first rewrite D1 calls
   for is now a memory requirement, not a preference.
