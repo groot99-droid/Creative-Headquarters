@@ -17,7 +17,17 @@
 # Exit 0 = ready, 1 = a hard prerequisite is missing.
 
 set -uo pipefail
-cd "$(dirname "$0")/.." || exit 2
+
+# Resolve the repo root without depending on dirname: if it is missing or fails, the
+# subshell yields "" and `cd "/.."` silently succeeds into /, after which every relative
+# path below reports itself missing. Confirm a landmark instead of trusting the cd.
+SELF_DIR="${0%/*}"
+[ "$SELF_DIR" = "$0" ] && SELF_DIR="."
+cd "$SELF_DIR/.." || exit 2
+if [ ! -f Router.md ] || [ ! -d skills ]; then
+  printf 'bootstrap.sh must run from <repo>/tools/ — no Router.md or skills/ under %s\n' "$PWD" >&2
+  exit 2
+fi
 ROOT="$PWD"
 SKILL="skills/hardware_compute.skill.md"
 PROBE_OUT="state/hw_probe_latest.json"
