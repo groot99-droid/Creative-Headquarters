@@ -4,9 +4,11 @@ name: verify
 # dashboard.json, router.js, and the skill headers). Drift between them halts every
 # route, so the checks that catch it should not depend on someone remembering to run
 # them locally.
+# push is scoped to main rather than "**": a branch with an open PR would otherwise run
+# the whole suite twice per push, once for each event.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
