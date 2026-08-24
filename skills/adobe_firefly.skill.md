@@ -25,6 +25,7 @@ version: 1.0
 trigger_a: ["generate image", "concept art", "style frame", "style ref", "firefly", "key art"]
 trigger_b: [".png reference", ".jpg reference", "pipeline phase skill=adobe_firefly"]
 mandatory_context: [visual_identity, color_science]
+host_kinds: [windows, wsl, linux]   # network/API skill — no host-native bridge
 writes_dashboard_keys: [active_variables.style_ref_id, active_variables.style_ref_id_prev]
 danger_class: EXTERNAL_API_SPEND
 ```

@@ -25,6 +25,7 @@ version: 1.0
 trigger_a: ["UI", "dashboard", "component", "landing page", "DOM", "front-end", "panel", "widget"]
 trigger_b: [".html", ".css", ".jsx(web)", "pipeline phase skill=css_html_ui"]
 mandatory_context: [typography_system, visual_identity, brand_voice]
+host_kinds: [windows, wsl, linux]   # network/API skill — no host-native bridge
 writes_dashboard_keys: [pipeline.phases[*].progress_pct]
 danger_class: LOW   # but style drift is BRAND damage — tokens are law
 ```

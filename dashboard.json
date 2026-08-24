@@ -1,6 +1,6 @@
 {
   "meta": {
-    "schema_version": "1.0.0",
+    "schema_version": "2.0.0",
     "system_name": "STUDIO HEADLESS OS",
     "operator": "Studio Lead",
     "generated": "2026-07-01T00:00:00Z",
@@ -25,36 +25,91 @@
     "intercept_violations_24h": 0,
     "active_skill": null,
     "context_loaded": [],
-    "blocked_reason": "Every \u00a73 context resolves to L3 UNRESOLVED: no context/brand/*.context.md authored, and vault/ holds no Content MDs to recall (L1) or derive from (L2 needs >=3). Per \u00a75 the Router parks in every mode, autonomous included."
+    "blocked_reason": "Every §3 context resolves to L3 UNRESOLVED: no context/brand/*.context.md authored, and vault/ holds no Content MDs to recall (L1) or derive from (L2 needs >=3). Per §5 the Router parks in every mode, autonomous included."
   },
   "hardware": {
-    "host": "Mac Studio M3 Ultra",
-    "unified_memory_gb": 192,
+    "host": "Lenovo Yoga Book 9i",
+    "host_os": "Windows 11",
+    "host_kind": "windows",
+    "host_kind_enum": [
+      "windows",
+      "wsl",
+      "linux"
+    ],
+    "_host_note": "One machine, not two. Schema 2.0 retired hardware.egpu / hardware.compute_node: there is no CUDA node and no eGPU. host_kind is the SHELL this session reached the laptop through — Claude Code desktop may hand a bash block to Git Bash or to WSL2, and they report different truths about the same hardware (see hardware_compute ARTIFACT B wsl_memory_law).",
+    "memory_gb": 16,
+    "memory_soldered": true,
     "memory_pressure": "green",
     "memory_pressure_enum": [
       "green",
       "yellow",
       "red"
     ],
-    "egpu": {
-      "status": "attached",
+    "memory_available_gb": null,
+    "gpu": {
+      "status": "integrated",
       "status_enum": [
-        "attached",
-        "detached",
-        "error"
+        "integrated",
+        "discrete",
+        "absent"
       ],
-      "model": "External Compute Node",
-      "vram_gb": 48,
-      "vram_used_gb": 11.2,
-      "thermal": "nominal"
+      "name": "Intel integrated graphics",
+      "vram_gb": null,
+      "memory_shared_with_system": true,
+      "_note": "vram_gb is null by design: the iGPU borrows from the same 16 GB memory_gb already governs. Reporting a number here would double-count it.",
+      "cuda": false
+    },
+    "power": {
+      "source": null,
+      "source_enum": [
+        "ac",
+        "battery"
+      ],
+      "battery_pct": null,
+      "_note": "A gate, not a readout: every workload class except llm_local_sm requires AC."
+    },
+    "thermal": {
+      "cpu_temp_c": null,
+      "cpu_perf_pct": null,
+      "_note": "Two independent readings of one limit; at least one must be readable or the gate closes. cpu_perf_pct is the load-bearing one on this chassis."
     },
     "local_llm": {
-      "model": "DeepSeek-R1-671B",
-      "quantization": "Q4_K_M",
-      "context_window_tokens": 131072,
-      "context_used_pct": 34,
-      "endpoint": "http://localhost:11434"
-    }
+      "endpoint": "http://localhost:11434",
+      "_endpoint_note": "Ollama on the Windows side. From WSL2 under default NAT networking 'localhost' is the WSL VM, not the laptop — local_rag_orchestration §1 P2a rewrites the host to the WSL gateway.",
+      "loaded_tier": null,
+      "tier_enum": [
+        "sm",
+        "md"
+      ],
+      "context_used_pct": 0,
+      "tiers": {
+        "sm": {
+          "model": "llama3.1:8b",
+          "params_b": 8,
+          "quantization": "Q4_K_M",
+          "context_window_tokens": 8192,
+          "workload_class": "llm_local_sm",
+          "approx_resident_gb": 6
+        },
+        "md": {
+          "model": "mistral-nemo:12b",
+          "params_b": 12,
+          "quantization": "Q4_K_M",
+          "context_window_tokens": 4096,
+          "workload_class": "llm_local_md",
+          "approx_resident_gb": 10
+        }
+      },
+      "embed_model": "nomic-embed-text",
+      "_tiers_note": "PROVISIONAL — these tags are the shape of the registry, not a verified inventory of this machine. Run `ollama list` and correct them; local_rag_orchestration §1 P2b verifies the tag before any call and fails loudly rather than silently substituting a model."
+    },
+    "workload_classes": [
+      "llm_local_sm",
+      "llm_local_md",
+      "render_3d_cpu",
+      "batch_2d"
+    ],
+    "single_flight": true
   },
   "pipeline": {
     "project": "PROJECT_AURORA",
@@ -115,7 +170,7 @@
     "_note": "Live execution state for the current run. Project memory lives in vault/ as Content MDs, not here."
   },
   "active_variables": {
-    "_note": "Run-scoped only. Disposable between runs. Anything that must survive to the next session belongs in the task's Content MD (Router.md \u00a78).",
+    "_note": "Run-scoped only. Disposable between runs. Anything that must survive to the next session belongs in the task's Content MD (Router.md §8).",
     "content_md": null,
     "resolved_context": [],
     "provisional_constraints": []
@@ -163,7 +218,7 @@
         "status": "ready"
       }
     ],
-    "context_note": "Router.md \u00a73 gates resolve to context/brand/<name>.context.md at L0. None is authored, and vault/ has no Content MDs, so L1/L2 cannot resolve either \u2014 every route parks at L3 per \u00a75. That is correct behavior, not a bug. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
+    "context_note": "Router.md §3 gates resolve to context/brand/<name>.context.md at L0. None is authored, and vault/ has no Content MDs, so L1/L2 cannot resolve either — every route parks at L3 per §5. That is correct behavior, not a bug. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
     "context_brand_gates": [
       {
         "role": "visual_identity",
@@ -272,7 +327,7 @@
       "ts": "2026-08-23T18:30:00Z",
       "actor": "router",
       "event": "PARKED",
-      "detail": "ph_03 higgsfield_api \u2192 L3 UNRESOLVED: motion_language, narrative_continuity, visual_identity. Resolve by authoring context/brand/<name>.context.md. content_md: null (no vault note \u2014 nothing to write back into)"
+      "detail": "ph_03 higgsfield_api → L3 UNRESOLVED: motion_language, narrative_continuity, visual_identity. Resolve by authoring context/brand/<name>.context.md. content_md: null (no vault note — nothing to write back into)"
     },
     {
       "ts": "2026-07-01T09:42:11Z",
@@ -284,7 +339,7 @@
       "ts": "2026-07-01T09:40:03Z",
       "actor": "higgsfield_api",
       "event": "RENDER_SUBMITTED",
-      "detail": "Shot 07 \u2192 job hf_a91x, seed 448811"
+      "detail": "Shot 07 → job hf_a91x, seed 448811"
     },
     {
       "ts": "2026-07-01T09:38:47Z",
@@ -302,7 +357,7 @@
       "ts": "2026-07-01T09:12:20Z",
       "actor": "adobe_suite_uxp",
       "event": "COMP_STARTED",
-      "detail": "Timeline v3 \u2192 compositing 18%"
+      "detail": "Timeline v3 → compositing 18%"
     }
   ]
 }

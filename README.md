@@ -91,10 +91,29 @@ token dictionary, the pipeline routes to real skills with coherent progress, and
 declared `system_status.state` is consistent with the §5 ladder — with nothing authored
 and no vault notes, every context lands at L3, and L3 parks.
 
+Since the single-host port it also checks **portability**: every skill declares
+`host_kinds` within the dashboard's enum, no skill invokes a macOS-only binary or carries
+an `/Applications/` path inside a code fence, and no skill sets `cycles.device = "GPU"`
+while `hardware.gpu.cuda` is false. Prose describing the migration is exempt — the scan
+reads fenced code only. Run against the pre-port files it reports 8 failures.
+
 Run it after editing any protocol file. Right now it passes with all ten gates reported
 as pending and the state declared `BLOCKED` — honest rather than papered over.
 
 ---
+
+## The machine
+
+One laptop runs all of it: a **Lenovo Yoga Book 9i** — 16 GB soldered, Intel integrated
+graphics, no CUDA — driven from **Claude Code desktop on Windows**, with Ollama serving
+local models on the same machine. Bash blocks may land in Git Bash or in WSL2; both are
+supported, and the probe tells them apart because they report different truths about the
+same hardware (inside WSL2, `/proc/meminfo` describes the WSL VM, not the laptop).
+
+This replaced a two-machine studio — a 192 GB Mac host plus a LAN CUDA render node. That
+assumption was compiled into the gates, not just described in prose, so the port touched
+the probe, the thresholds, the Adobe bridge, the Blender device, and the model registry.
+See DECISIONS.md § D8 for what each change costs.
 
 ## Hardware gating
 
@@ -103,12 +122,25 @@ may not run without a fresh `PASS` token at `state/compute_gate.json`, carrying 
 workload class and a 30-minute TTL; **one token authorizes one job** — the consuming
 skill stamps `consumed_by` and the token is spent.
 
-The studio is two machines: a macOS host (Adobe, orchestration) and a Linux/Windows
-CUDA node on the LAN for rendering. Not a Thunderbolt eGPU — Apple silicon has no eGPU
-support. `verify_compute.sh` detects which host it is on and probes accordingly; it
-emits one JSON object and mutates nothing. A metric it cannot read comes back `null`
-and evaluates to **fail**, never to pass-by-default. An unverifiable gate is a closed
-gate.
+`verify_compute.sh` detects which shell it was invoked from and probes accordingly; it
+emits one JSON object and mutates nothing. A metric it cannot read comes back `null` and
+evaluates to **fail**, never to pass-by-default. An unverifiable gate is a closed gate.
+
+Three things this laptop made into gates that the two-machine studio never needed:
+
+- **Power.** Windows caps sustained clocks on battery. Every workload class except
+  `llm_local_sm` requires AC.
+- **Thermal headroom.** A thin 14″ chassis throttles under load, so the first probe is
+  the best the machine will look. Long jobs re-probe every 5 minutes and checkpoint-pause
+  on two consecutive denials. Temperature and processor-performance percentage are two
+  independent readings of one limit: at least one must be readable, and every readable
+  one must pass.
+- **Single flight.** One heavy job at a time. A live token for one workload denies a
+  token for any other — 16 GB cannot hold a render and a composite at once.
+
+The four workload classes are sized against 16 GB: `llm_local_sm` (≤8B, 8k context),
+`llm_local_md` (12–14B, 4k), `render_3d_cpu` (EEVEE, or Cycles on CPU), and `batch_2d`
+(Adobe via the COM bridge).
 
 ---
 
