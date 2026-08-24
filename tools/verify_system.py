@@ -134,6 +134,90 @@ def check_skill_headers(d, roles):
         ok("every skill's mandatory_context names a declared brand gate")
 
 
+# macOS-only binaries. The port to a single Windows laptop (DECISIONS.md § D8) removed
+# every call to these; this check exists so they cannot creep back in from a copied
+# snippet or an older skill file. Scanned inside fenced code blocks only, and there at
+# command position: these files explain the port they came from, so `osascript` and
+# `cycles.device = "GPU"` both appear in prose describing what was REMOVED. A checker
+# that cannot tell an invocation from a description of an invocation fails every
+# honestly-documented migration.
+MAC_ONLY = {
+    "osascript": "AppleScript bridge — use PowerShell COM (adobe_suite_uxp ARTIFACT D)",
+    "vm_stat":   "macOS memory probe — use the PowerShell bridge (hardware_compute ARTIFACT A)",
+    "sysctl":    "macOS/BSD sysctl — use Win32_ComputerSystem / /proc/meminfo",
+    "afplay":    "macOS audio playback",
+    "pbcopy":    "macOS clipboard",
+}
+CMD_POS = r"(?m)(?:^|[|;&]|\$\()\s*(?:[A-Z_]+=\S+\s+)*({})\b"
+
+
+def check_host_portability(d):
+    """Every skill declares which host kinds it runs on, and none invokes a macOS binary.
+
+    The failure this prevents: v1.x was written for a macOS host plus a CUDA node. When
+    that assumption was removed, the risk stopped being 'the code is wrong' and became
+    'the code is wrong in one file nobody reopened'. A skill that still shells out to
+    osascript is not a portability nit here — it is a route that dies at execution on the
+    only machine this system now runs on.
+    """
+    supported = set(d["hardware"].get("host_kind_enum", []))
+    if not supported:
+        fail("dashboard hardware.host_kind_enum is empty — nothing to check host_kinds against")
+        return
+
+    def fenced(text):
+        """Only what is inside ``` fences — prose about the migration is not code."""
+        return "\n".join(re.findall(r"^```[a-z]*\n(.*?)^```", text, re.S | re.M))
+
+    for path in sorted((ROOT / "skills").glob("*.skill.md")):
+        text = path.read_text()
+        code = fenced(text)
+        m = re.search(r"^host_kinds:\s*\[(.*?)\]", text, re.M)
+        if not m:
+            fail(f"{path.name} declares no host_kinds — the Router cannot tell if it runs here")
+        else:
+            declared = [h.strip() for h in m.group(1).split(",") if h.strip()]
+            unknown = [h for h in declared if h not in supported]
+            for h in unknown:
+                fail(f"{path.name} declares host_kind '{h}', which is not in "
+                     f"hardware.host_kind_enum ({', '.join(sorted(supported))})")
+
+        for binary, why in MAC_ONLY.items():
+            if re.search(CMD_POS.format(binary), code):
+                fail(f"{path.name} invokes macOS-only '{binary}' — {why}")
+        if "/Applications/" in code:
+            fail(f"{path.name} contains a macOS /Applications/ path — this host is Windows")
+
+        if d["hardware"].get("gpu", {}).get("cuda") is False:
+            if re.search(r'^\s*(?:scn|scene)\.cycles\.device\s*=\s*"GPU"', code, re.M):
+                fail(f"{path.name} sets cycles.device=GPU, but hardware.gpu.cuda is false — "
+                     f"the render would fall back to CPU silently")
+    ok(f"all 8 skills declare host_kinds within {sorted(supported)} and invoke no macOS-only binary")
+
+
+def check_extracted_probe():
+    """tools/hw/verify_compute.sh is generated from ARTIFACT A. It must still match.
+
+    The failure this prevents is the oldest one in the book: the probe is extracted once,
+    then debugged in place on the studio machine, and the skill file — which every future
+    extraction reads — keeps the broken original. The extracted copy is gitignored, so
+    this only fires on a machine that has actually bootstrapped.
+    """
+    extracted = ROOT / "tools" / "hw" / "verify_compute.sh"
+    if not extracted.exists():
+        return                      # not bootstrapped here; nothing to drift
+    skill = (ROOT / "skills" / "hardware_compute.skill.md").read_text()
+    m = re.search(r"### ARTIFACT A.*?\n```bash\n(.*?)\n```", skill, re.S)
+    if not m:
+        fail("ARTIFACT A not found in hardware_compute.skill.md")
+        return
+    if extracted.read_text().strip() != m.group(1).strip():
+        fail("tools/hw/verify_compute.sh has drifted from ARTIFACT A — edit the skill "
+             "file and re-run tools/bootstrap.sh; the extracted copy is not the source")
+    else:
+        ok("extracted probe matches ARTIFACT A")
+
+
 def check_router_md(d, roles):
     """Router.md §3 names the gates; the dashboard declares them. Mirrors go stale."""
     text = (ROOT / "Router.md").read_text()
@@ -297,6 +381,8 @@ def main():
     roles = check_brand_gates(d)
     check_domain_libraries(d, contexts)
     check_skill_headers(d, roles)
+    check_host_portability(d)
+    check_extracted_probe()
     check_router_md(d, roles)
     check_router_js(d, roles)
     check_palette_parity(d)

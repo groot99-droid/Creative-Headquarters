@@ -21,14 +21,30 @@
 
 ```yaml
 skill_id: blender_python
-version: 1.0
+version: 2.0
 trigger_a: ["3D", "blender", "camera path", "low-poly", "procedural", "insert shot", "previz"]
 trigger_b: [".blend", ".fbx", ".obj", ".glb", "pipeline phase skill=blender_python"]
 mandatory_context: [render_philosophy, motion_language]
+host_kinds: [windows, wsl, linux]
 writes_dashboard_keys: [pipeline.phases[*].progress_pct]
 danger_class: LOCAL_COMPUTE_HEAVY   # rendering — hardware_compute gate REQUIRED first
 depends_on_skill: hardware_compute.skill.md   # must PASS before any render step
+workload_class: render_3d_cpu
+version_note: v2.0 — single-host port. The CUDA node is gone; this renders on a 14" laptop with Intel integrated graphics. EEVEE is the default engine and Cycles is CPU-only.
 ```
+
+**There is no render node any more, and pretending otherwise produces a job that never
+finishes.** v1.x set `cycles.device = "GPU"` and shipped this workload to a LAN CUDA box.
+This machine has an Intel iGPU that Cycles cannot use as a compute device (the oneAPI
+backend targets discrete Arc, not the integrated part), so a Cycles render here runs on
+the CPU whatever the device flag says — the flag just decided whether Blender fell back
+silently or errored. Two consequences are now enforced in §1 and ARTIFACT A:
+
+- **EEVEE is the default engine.** It is rasterized, it *does* use the iGPU, and it is
+  the only engine that returns an animation on this hardware in a working session.
+- **Cycles is for stills, on CPU, with a sample ceiling.** ARTIFACT C caps it. A 120-frame
+  Cycles animation is not a slow job on this laptop; it is an overnight job that will
+  thermally throttle to a crawl by frame 20 — see `hardware_compute` §2.8.
 
 The §3 `bpy` templates are **localized tools**: extract to `./tools/bpy/`, parameterize, run headless (`blender -b -P`). Never improvise bpy calls line-by-line in an interactive session — the templates encode the studio's camera grammar and render settings; ad-hoc code drifts from both.
 
@@ -40,17 +56,37 @@ The §3 `bpy` templates are **localized tools**: extract to `./tools/bpy/`, para
 # P1 — Attestation exists
 grep -q "ROUTER INTERCEPT" ./.task_scratch/attestation.txt || echo "FAIL:P1"
 
-# P2 — Blender binary + version floor
-BLENDER=${BLENDER_BIN:-/Applications/Blender.app/Contents/MacOS/Blender}
-"$BLENDER" --version | head -1 | grep -qE "Blender (4|5)\." && echo "OK:P2" || echo "FAIL:P2 need Blender 4+"
+# P2 — Blender binary + version floor. One host, three shells, three plausible paths:
+#      an explicit override, a PATH install, or the default Windows install location
+#      (globbed, because the version is in the directory name).
+if [ -z "${BLENDER_BIN:-}" ]; then
+  if command -v blender >/dev/null 2>&1; then
+    BLENDER_BIN=$(command -v blender)
+  else
+    for root in "/c/Program Files/Blender Foundation" "/mnt/c/Program Files/Blender Foundation"; do
+      for cand in "$root"/Blender*/blender.exe; do
+        [ -x "$cand" ] && BLENDER_BIN="$cand" && break 2
+      done
+    done
+  fi
+fi
+BLENDER="${BLENDER_BIN:-blender}"
+"$BLENDER" --version 2>/dev/null | head -1 | grep -qE "Blender (4|5)\." \
+  && echo "OK:P2 ($BLENDER)" || echo "FAIL:P2 need Blender 4+ — set BLENDER_BIN"
 
-# P3 — Headless python sanity (bpy importable, GPU backend visible)
-"$BLENDER" -b --python-expr "import bpy;prefs=bpy.context.preferences.addons['cycles'].preferences;prefs.get_devices();print('DEV:',[d.name for d in prefs.devices])" 2>/dev/null | grep -q "DEV:" \
-  && echo "OK:P3" || echo "FAIL:P3 cycles devices not enumerable"
+# P3 — Headless python sanity. Enumerating devices is still the check, but the ASSERTION
+#      inverted: on this machine the correct result is that Cycles finds no usable
+#      compute device beyond the CPU. If a CUDA/OptiX device ever appears here, the
+#      route is running on hardware this skill was not ported to — stop and re-read
+#      DECISIONS.md § D8 rather than quietly rendering on it.
+DEVS=$("$BLENDER" -b --python-expr "import bpy;prefs=bpy.context.preferences.addons['cycles'].preferences;prefs.get_devices();print('DEV:',[(d.name,d.type) for d in prefs.devices])" 2>/dev/null | grep "^DEV:")
+[ -n "$DEVS" ] && echo "OK:P3 $DEVS" || echo "FAIL:P3 cycles devices not enumerable"
+echo "$DEVS" | grep -qE "OPTIX|CUDA" && echo "WARN:P3 discrete GPU present — this skill assumes CPU/EEVEE (D8)"
 
 # P4 — HARDWARE GATE: hardware_compute must have written a fresh, unconsumed PASS
 #      token FOR THIS WORKLOAD. ARTIFACT C's law is "one token, one workload" —
 #      checking only verdict+age would let a batch_2d token authorize a 3D render.
+#      Under the single-flight law this token is also the machine's only heavy slot.
 python3 - <<'PY'
 import json, time
 try:
@@ -60,7 +96,7 @@ try:
     reasons = []
     if t.get("verdict") != "PASS":            reasons.append("verdict=%s" % t.get("verdict"))
     if age >= ttl:                            reasons.append("stale (%ds > %ds TTL)" % (age, ttl))
-    if t.get("workload") != "render_3d":      reasons.append("wrong workload=%s" % t.get("workload"))
+    if t.get("workload") != "render_3d_cpu":  reasons.append("wrong workload=%s" % t.get("workload"))
     if t.get("consumed_by") is not None:      reasons.append("already consumed by %s" % t["consumed_by"])
 except Exception as e:
     reasons = ["unreadable token: %s" % e]
@@ -111,9 +147,19 @@ scn = bpy.context.scene
 scn.render.fps = P["fps"]
 scn.render.resolution_x, scn.render.resolution_y = P["resolution"]
 scn.frame_start, scn.frame_end = 1, P["frames"]
-scn.render.engine = P.get("engine", "CYCLES")
-scn.cycles.samples = P.get("samples", 128)
-scn.cycles.device = "GPU"
+# Engine default is EEVEE: Cycles has no usable GPU backend on Intel integrated
+# graphics, so a Cycles job here is a CPU job. Setting device="GPU" on this host does
+# not make it faster, it makes the fallback silent.
+scn.render.engine = P.get("engine", "BLENDER_EEVEE_NEXT")
+if scn.render.engine == "CYCLES":
+    scn.cycles.device = "CPU"
+    # Sample ceiling is a thermal decision, not a taste one — hardware_compute denies
+    # render_3d_cpu below 85% processor performance, and a long CPU render is how the
+    # machine gets there.
+    scn.cycles.samples = min(P.get("samples", 64), P.get("samples_ceiling", 128))
+    scn.cycles.use_denoising = True
+else:
+    scn.eevee.taa_render_samples = P.get("samples", 64)
 scn.render.image_settings.file_format = "PNG"
 scn.render.filepath = P["out_dir"] + "/" + P["shot_id"] + "_"
 
@@ -204,10 +250,13 @@ print("MANIFEST::" + json.dumps({"seed": P["seed"], "polys": sum(len(o.data.poly
 {
   "shot_id": "sht_3d_01",
   "fps": 24,
-  "resolution": [2688, 1152],
+  "resolution": [1920, 823],
+  "_resolution_note": "21:9 at 1920 wide. The v1.x default was 2688x1152, sized for a 48 GB render node; at 16 GB shared with the compositor this is the working size and 2688 is the deliberate, gated exception.",
   "frames": 120,
-  "engine": "CYCLES",
-  "samples": 128,
+  "engine": "BLENDER_EEVEE_NEXT",
+  "_engine_enum": ["BLENDER_EEVEE_NEXT", "CYCLES"],
+  "samples": 64,
+  "samples_ceiling": 128,
   "lens_mm": 35,
   "path_points": [[8, -8, 3], [5, -5, 2.5], [2.5, -2.5, 2]],
   "look_at": [0, 0, 1],

@@ -14,7 +14,10 @@ rules out, and what it obliges the next pass to do.
 
 **Why:** `dashboard.json → hardware` already describes the target machine — Mac
 Studio M3 Ultra, 192 GB unified memory, DeepSeek-R1-671B at
-`http://localhost:11434`. `skills/local_rag_orchestration.skill.md` is written
+`http://localhost:11434`. *(Machine superseded by § D8: one Lenovo Yoga Book 9i,
+16 GB, tiered local models. The decision itself — local-first, single process, no
+seven-service cloud stack — survives the move and is now a memory requirement rather
+than a preference. Only the hardware it cites has changed.)* `skills/local_rag_orchestration.skill.md` is written
 end to end against that endpoint: Ollama request payloads, a 131,072-token
 budget law, R1-specific prompt rules (no system field, temperature 0.6, strip
 `<think>`), and FAISS shards under `state/rag_index/`. The engine's code was
@@ -219,3 +222,112 @@ Rewriting the five properly is deferred: each needs its Four-Part Architecture
 reworked around Content MD read/write, and doing that before one skill has been
 run end to end would be guessing at the shape. `brush_designer` should be written
 first as the reference implementation, then these five follow its pattern.
+
+---
+
+## D8 — The studio is one Windows laptop, not a Mac host plus a CUDA node
+
+**Chosen:** a single host — a **Lenovo Yoga Book 9i** (16 GB soldered, Intel integrated
+graphics, no CUDA), driven from **Claude Code desktop on Windows**, with local models
+served by Ollama on the same machine. Bash blocks may run under Git Bash or WSL2; both
+are supported and the probe distinguishes them.
+
+**Rejected:** keeping the two-machine topology (macOS host for Adobe and orchestration,
+LAN CUDA node for rendering) and treating the laptop as a third client.
+
+**Why:** the two-machine assumption was not a preference expressed in prose — it was
+compiled into the gates. `hardware_compute` probed with `sysctl`/`vm_stat`, required
+`host.kind ∈ {linux, windows}` *with* an available discrete GPU for `render_3d`, and set
+`memory.available_gb_min: 140` for a 671B model. `adobe_suite_uxp` executed every script
+through `osascript`. `blender_python` looked for Blender at
+`/Applications/Blender.app/…` and set `cycles.device = "GPU"`. On this laptop each of
+those is not slower — it is a hard failure at execution, and several of them fail
+*silently*, which is worse.
+
+**What changed, and what each change costs:**
+
+1. **Probe rewritten** (`hardware_compute` v2.0, ARTIFACT A). One host, three shells.
+   Memory, power, thermals and disk come through a PowerShell bridge under Windows and
+   WSL; `/proc` is used only on native Linux. New: `power.source` and
+   `thermal.cpu_perf_pct`.
+2. **Thresholds re-cut, not softened.** `llm_671b` (140 GB) and `render_3d` (CUDA, 32 GB)
+   were deleted rather than scaled, because a threshold nothing can pass and a threshold
+   everything passes are the same broken gate. The classes are now `llm_local_sm`,
+   `llm_local_md`, `render_3d_cpu`, `batch_2d`, sized against 16 GB.
+3. **Single-flight law.** With one machine, two heavy jobs contend for the same memory
+   and thermal budget, so a live gate token now blocks minting a token for any other
+   workload. This is a real capability loss: render-while-compositing is gone.
+4. **Adobe moved from AppleScript to COM.** `osascript … do javascript file` became
+   PowerShell `New-Object -ComObject Photoshop.Application` + `DoJavaScriptFile`. The
+   ExtendScript artifacts themselves are unchanged — they were always cross-platform.
+   Two Windows-specific traps are now encoded: a modal dialog blocks COM indefinitely
+   (hence the timeout in ARTIFACT D), and COM binds only at a matching integrity level,
+   so an elevated shell silently drives a *second* Photoshop instance (hence P2a).
+5. **Blender defaults to EEVEE, and Cycles is CPU-only.** Cycles has no usable backend on
+   Intel integrated graphics; `device = "GPU"` only chose whether the fallback was
+   silent. Default resolution dropped from 2688×1152 to 1920×823 for the same reason.
+6. **The local model became a tier, not a name.** DeepSeek-R1-671B does not load in 16 GB.
+   `local_rag_orchestration` v2.0 resolves a tier from
+   `dashboard.json → hardware.local_llm.tiers` and verifies the tag against Ollama's
+   `/api/tags` before calling. The window dropped from 131,072 tokens to 8,192 (sm) /
+   4,096 (md) — on this machine `num_ctx` is a memory decision, since Ollama allocates
+   the KV cache at load.
+7. **Models must be evicted, not left resident.** Every call sets `keep_alive: "5m"` and
+   §2.8 releases the model explicitly. A resident model on the old host was free; here it
+   holds gigabytes the next render is about to be denied for.
+8. **`dashboard.json` schema 2.0.0.** `hardware.egpu` / `hardware.compute_node` are
+   retired; `hardware.gpu`, `hardware.power`, `hardware.thermal` and
+   `hardware.local_llm.tiers` replace them. `router.js` renders the new shape and still
+   displays a legacy node if an old dashboard is loaded, flagged rather than hidden.
+
+**Enforced, not just documented.** `tools/verify_system.py` gained
+`check_host_portability`: every skill must declare `host_kinds` within the dashboard's
+enum, no skill may invoke a macOS-only binary or carry an `/Applications/` path inside a
+code fence, and no skill may set `cycles.device = "GPU"` while `hardware.gpu.cuda` is
+false. Run against the pre-port files it reports 8 failures; against the ported tree, 0.
+
+**Made executable in a follow-up pass.** The gate was specified but not runnable:
+ARTIFACT B said "compare probe JSON against these thresholds" to an agent reading the
+file, and nothing executed it. First boot needed that to be a mechanism.
+
+- `tools/bootstrap.sh` — preflight (shell kind, hard vs. soft prerequisites, Ollama
+  reachability including the WSL gateway retarget, COM registration via `Test-Path` on the
+  registry rather than `New-Object`, which would launch Photoshop), extracts ARTIFACT A,
+  runs it, and surveys every workload class.
+- `tools/hw/evaluate_gate.py` — parses ARTIFACT B out of the skill at run time and mints
+  or denies the token. Implements `null_law`, `thermal_law` (either reading suffices,
+  neither does not), `host_law` and `single_flight_law`. No second copy of the thresholds
+  exists, so the evaluator cannot drift from the skill.
+- `tools/hw/test_gate.py` — ten cases pinning the verdicts that matter on this machine:
+  AC required for sustained work, throttling denied, one readable thermal reading enough,
+  a discrete GPU or a macOS host refused, a live token blocking a second workload.
+- `tools/reconcile_models.py` — compares the tier registry against Ollama's `/api/tags`
+  and reports drift; `--write` applies it. It excludes models outside a tier's parameter
+  range (a 70B is not "md but slower" on 16 GB — it does not load) and never picks
+  silently.
+- `.github/workflows/verify.yml` — runs both checkers on every push and PR, plus an
+  extract-and-`bash -n` of ARTIFACT A. It is executable content living in a markdown file;
+  nothing else would notice if an edit broke its syntax.
+- `verify_system.py` also now fails if `tools/hw/verify_compute.sh` has drifted from
+  ARTIFACT A — the extracted copy is gitignored precisely because debugging it in place
+  and leaving the skill file broken is the obvious failure mode.
+- `BOOT.md` — the runbook, including why a clean bootstrap still reports `BLOCKED`.
+
+**Not yet done.**
+
+- `hardware.local_llm.tiers` still carries **provisional** model tags (`llama3.1:8b`,
+  `mistral-nemo:12b`, `nomic-embed-text`). `reconcile_models.py` exists to correct them but
+  has only been run against a stub endpoint; the real inventory is unknown until someone
+  runs `ollama list` on the machine.
+- The probe has been syntax-checked and exercised on Linux, where it emits valid JSON.
+  Its Windows and WSL branches — every `psq` query, the WSL gateway rewrite, the
+  `wslpath` handoff — have **never been run on the target machine**. Treat first boot as
+  debugging, not as a smoke test. The same is true of bootstrap's COM-registration probe.
+- The system remains `BLOCKED` after bootstrap, and correctly so: ten brand gates are
+  unauthored and the vault is empty, so §5's ladder parks every route at L3. Authoring
+  them encodes taste and prior decisions, which is exactly what cannot be generated.
+- `archive/` still ships `docker-compose.yml` and a cloud stack (§ D1). Docker Desktop on
+  16 GB competes directly with both Ollama and Adobe; the local-first rewrite D1 calls
+  for is now a memory requirement, not a preference.
+- Premiere has no COM automation on Windows. `adobe_suite_uxp` ARTIFACT C still assumes
+  the CEP/UXP panel endpoint it assumed on macOS, and that path is unverified here.

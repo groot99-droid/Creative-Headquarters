@@ -25,6 +25,7 @@ version: 1.0
 trigger_a: ["music", "track", "score", "stem", "theme", "drop", "verse", "soundtrack"]
 trigger_b: [".wav", ".mp3", ".stem", "pipeline phase skill=suno_audio"]
 mandatory_context: [sound_identity, brand_voice]
+host_kinds: [windows, wsl, linux]   # network/API skill — no host-native bridge
 writes_dashboard_keys: [active_variables.audio_bpm, active_variables.audio_key]
 danger_class: EXTERNAL_API_SPEND
 ```

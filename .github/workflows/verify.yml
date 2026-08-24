@@ -1,0 +1,62 @@
+name: verify
+
+# The protocol lives in four files that each carry a copy of it (Router.md,
+# dashboard.json, router.js, and the skill headers). Drift between them halts every
+# route, so the checks that catch it should not depend on someone remembering to run
+# them locally.
+# push is scoped to main rather than "**": a branch with an open PR would otherwise run
+# the whole suite twice per push, once for each event.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Protocol integrity
+        run: python3 tools/verify_system.py
+
+      - name: Gate logic
+        run: python3 tools/hw/test_gate.py
+
+      - name: Probe extracts and parses
+        # ARTIFACT A is executable content embedded in a markdown file. If an edit breaks
+        # its syntax, nothing notices until the gate is needed on the studio machine.
+        run: |
+          mkdir -p tools/hw
+          python3 - skills/hardware_compute.skill.md > tools/hw/verify_compute.sh <<'PY'
+          import re, sys
+          t = open(sys.argv[1]).read()
+          m = re.search(r"### ARTIFACT A.*?\n```bash\n(.*?)\n```", t, re.S)
+          if not m:
+              sys.exit("ARTIFACT A not found in the skill file")
+          sys.stdout.write(m.group(1) + "\n")
+          PY
+          bash -n tools/hw/verify_compute.sh
+          chmod +x tools/hw/verify_compute.sh
+          ./tools/hw/verify_compute.sh generic > /tmp/probe.json
+          python3 -c "import json;json.load(open('/tmp/probe.json'))"
+          echo "probe emitted valid JSON on $(uname -s)"
+
+      - name: Evaluator runs against a live probe
+        # A verdict of DENY is correct on a CI runner (no battery, no thermal sensor), so
+        # this asserts the evaluator RUNS and reaches a verdict, not that it passes.
+        run: |
+          python3 tools/hw/evaluate_gate.py --all --dry-run --probe /tmp/probe.json || true
+          python3 tools/hw/evaluate_gate.py --all --dry-run --probe /tmp/probe.json \
+            | grep -qE "—  (PASS|DENY)" || { echo "evaluator produced no verdict"; exit 1; }
+
+      - name: UI logic parses
+        run: node --check router.js
+
+      - name: Dashboard parses
+        run: python3 -c "import json;json.load(open('dashboard.json'));print('dashboard.json ok')"

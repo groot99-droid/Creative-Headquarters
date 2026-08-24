@@ -25,6 +25,7 @@ version: 1.0
 trigger_a: ["generate video", "motion", "animate shot", "camera move", "shot gen", "img2vid"]
 trigger_b: [".mp4", ".mov", "pipeline phase status: awaiting_render on skill=higgsfield_api"]
 mandatory_context: [motion_language, narrative_continuity, visual_identity]
+host_kinds: [windows, wsl, linux]   # network/API skill — no host-native bridge
 writes_dashboard_keys: [active_variables.character_uuid, active_variables.environment_uuid,
                         active_variables.seed_lock, active_variables.motion_vector_preset]
 danger_class: EXTERNAL_API_SPEND   # every call costs credits — no speculative submissions

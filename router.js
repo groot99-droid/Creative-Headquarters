@@ -123,31 +123,68 @@ function renderHardware(h) {
   if (!h) return;
   $("hw-host").textContent = h.host || "";
 
-  // schema 1.1 renamed hardware.egpu -> hardware.compute_node (it is a LAN CUDA box,
-  // not a Thunderbolt eGPU — Apple silicon has no eGPU support). Fall back for old files.
-  const node = h.compute_node || h.egpu || {};
+  // schema 2.0 is single-host: hardware.egpu / hardware.compute_node are gone, because
+  // the CUDA node is gone. Old files are still rendered rather than blanked — a stale
+  // dashboard should look stale, not broken.
+  const legacyNode = h.compute_node || h.egpu;
+  const gpu = h.gpu || {};
   const llm = h.local_llm || {};
-  const vramPct = node.vram_gb > 0 ? Math.round((node.vram_used_gb / node.vram_gb) * 100) : 0;
+  const power = h.power || {};
+  const thermal = h.thermal || {};
+
+  const tier = llm.loaded_tier ? (llm.tiers || {})[llm.loaded_tier] : null;
+  const ctxTokens = tier?.context_window_tokens ?? llm.context_window_tokens ?? 0;
   const ctxPct = clampPct(llm.context_used_pct);
-  // memory_pressure is a coarse enum (green/yellow/red), not a byte count —
-  // project it to an indicative meter fill rather than pretending we have exact free/used GB.
-  const pressurePct = { green: 30, yellow: 65, red: 90 }[h.memory_pressure] ?? 0;
+
+  // Memory: prefer measured available_gb from the last probe. memory_pressure is a
+  // coarse enum and only stands in when no probe has run — projecting it to a fill is
+  // an indication, not a measurement, so the label says which one you are looking at.
+  const totalGb = h.memory_gb ?? h.unified_memory_gb;
+  const availGb = h.memory_available_gb;
+  const measured = typeof availGb === "number" && totalGb > 0;
+  const memPct = measured
+    ? clampPct(Math.round(((totalGb - availGb) / totalGb) * 100))
+    : ({ green: 30, yellow: 65, red: 90 }[h.memory_pressure] ?? 0);
+  const memDetail = measured
+    ? `${(totalGb - availGb).toFixed(0)} / ${totalGb} GB used`
+    : `${h.memory_pressure ?? "—"} · ${totalGb ?? "—"} GB total (unprobed)`;
+
+  // Performance headroom, not utilisation: 100% is a machine running at nominal clock,
+  // and a low fill here is the throttling that denies render_3d_cpu.
+  const perf = thermal.cpu_perf_pct;
+  const perfKnown = typeof perf === "number";
 
   $("hw-meters").innerHTML = `
-    ${meter("Compute node VRAM", `${node.vram_used_gb ?? 0} / ${node.vram_gb ?? 0} GB`, vramPct)}
-    ${meter("Unified memory pressure", `${h.memory_pressure ?? "—"} · ${h.unified_memory_gb ?? "—"} GB total`, pressurePct)}
-    ${meter("LLM context window", `${ctxPct}% of ${((llm.context_window_tokens ?? 0) / 1024).toFixed(0)}k tokens`, ctxPct)}`;
+    ${meter("Memory", memDetail, memPct)}
+    ${meter("CPU throttling",
+            perfKnown ? `${perf}% of nominal clock` : "unreadable — gate closed",
+            perfKnown ? 100 - clampPct(perf) : 100)}
+    ${meter("LLM context window",
+            `${ctxPct}% of ${(ctxTokens / 1024).toFixed(0)}k tokens`, ctxPct)}`;
 
-  const nodeOk = node.status === "attached";
-  const thermalOk = node.thermal === "nominal";
+  const onAc = power.source === "ac";
+  const powerHtml = power.source
+    ? `<span class="${onAc ? "c-cyan" : "c-amber"}">${esc(power.source)}</span>` +
+      (typeof power.battery_pct === "number" ? ` · ${power.battery_pct}%` : "")
+    : `<span class="c-alert">unreadable</span>`;
+
+  const thermalHtml = [
+    typeof thermal.cpu_temp_c === "number" ? `${thermal.cpu_temp_c} °C` : null,
+    perfKnown ? `${perf}% perf` : null,
+  ].filter(Boolean).join(" · ") || `<span class="c-alert">no readable sensor</span>`;
+
   $("hw-facts").innerHTML = `
-    ${kv("Host", `${esc(h.host)} · ${esc(h.host_os ?? "—")}`)}
-    ${kv("Compute node", `<span class="${nodeOk ? "c-cyan" : "c-alert"}">${esc(node.status)}</span> · ${esc(node.model)}`)}
-    ${kv("Node GPU", `${esc(node.gpu ?? "—")} · ${esc(node.os ?? "—")}`)}
-    ${kv("Node thermal", `<span class="${thermalOk ? "c-cyan" : "c-amber"}">${esc(node.thermal)}</span>`)}
-    ${kv("Unified memory", `${esc(h.unified_memory_gb)} GB · pressure ${esc(h.memory_pressure)}`)}
-    ${kv("Local model", `${esc(llm.model)} (${esc(llm.quantization)})`)}
-    ${kv("Endpoint", esc(llm.endpoint))}`;
+    ${kv("Host", `${esc(h.host)} · ${esc(h.host_os ?? "—")} · ${esc(h.host_kind ?? "—")}`)}
+    ${kv("Graphics", `${esc(gpu.name ?? "—")} · ${esc(gpu.status ?? "—")}${gpu.cuda === false ? " · no CUDA" : ""}`)}
+    ${kv("Power", powerHtml)}
+    ${kv("Thermal", thermalHtml)}
+    ${kv("Memory", `${esc(totalGb)} GB${h.memory_soldered ? " soldered" : ""} · pressure ${esc(h.memory_pressure)}`)}
+    ${kv("Local model", tier
+        ? `${esc(tier.model)} (${esc(tier.quantization)}) · tier ${esc(llm.loaded_tier)}`
+        : `<span class="c-dim">none resident</span>`)}
+    ${kv("Endpoint", esc(llm.endpoint))}
+    ${legacyNode ? kv("Legacy compute node",
+        `<span class="c-amber">declared, but schema 2.0 is single-host</span>`) : ""}`;
 }
 
 const clampPct = (n) => Math.max(0, Math.min(100, Number(n) || 0));

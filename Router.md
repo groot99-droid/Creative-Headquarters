@@ -69,6 +69,31 @@ deep-research categories at `## 2.A` … `## 2.J`; the glossary exists so the ag
 to the relevant theory rather than skim the whole thing. These are retrieval material.
 They are never loaded to satisfy a §3 mandatory gate — see §3 path resolution.
 
+### Execution surface
+
+One machine runs all of this: a **Lenovo Yoga Book 9i** — 16 GB soldered, Intel
+integrated graphics, no CUDA — driven from **Claude Code desktop on Windows**. The
+system was originally written for a macOS host plus a LAN CUDA render node; that split
+is gone (DECISIONS.md § D8).
+
+The Router does not choose the machine, but it must know which **shell** a bash block
+lands in, because the same laptop reports different truths through each:
+
+| shell | `host_kind` | what to watch |
+|---|---|---|
+| Git Bash / MSYS on Windows | `windows` | native paths; PowerShell available directly |
+| WSL2 | `wsl` | `/proc/meminfo` describes the **WSL VM, not the laptop**; `localhost` is the VM, not Windows; Windows apps cannot open WSL paths |
+| native Linux | `linux` | no Adobe bridge — `adobe_suite_uxp` declares `host_kinds: [windows, wsl]` and does not route here |
+
+Every skill declares `host_kinds` in its routing header. A skill whose `host_kinds`
+excludes the current `host_kind` is **not routable on this host**: park the task per §5
+rather than improvising a substitute bridge. `tools/verify_system.py` enforces the
+declaration and refuses macOS-only invocations that creep back in.
+
+Compute-heavy work goes through `hardware_compute` first, and on a single host that
+gate is now also a **queue**: one heavy job at a time (single-flight law). The two-machine
+studio could render and composite simultaneously; this one cannot.
+
 ---
 
 ## 2. THE DUAL-TRIGGER INTERCEPT SYSTEM
@@ -86,8 +111,8 @@ Scan the user request for intent verbs and domain nouns:
 | "photoshop / premiere / after effects / comp / batch edit" | `adobe_suite_uxp.skill.md` |
 | "3D / blender / camera path / low-poly / procedural / rig" | `blender_python.skill.md` |
 | "UI / dashboard / component / landing page / DOM" | `css_html_ui.skill.md` |
-| "search my docs / recall / summarize corpus / RAG / DeepSeek" | `local_rag_orchestration.skill.md` |
-| "render locally / GPU / compute node / heavy compute / batch process" | `hardware_compute.skill.md` |
+| "search my docs / recall / summarize corpus / RAG / local model" | `local_rag_orchestration.skill.md` |
+| "render locally / GPU / heavy compute / batch process / thermals / on battery" | `hardware_compute.skill.md` |
 
 ### TRIGGER B — ASSET & STATE TRIGGER
 Independently of what the user *says*, inspect what the task *touches*:
