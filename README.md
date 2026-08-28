@@ -22,6 +22,7 @@ dashboard.json       Live system state — phases, active variables, event log, 
 control_room.html    Human-facing UI; renders dashboard.json.
 router.js            Polls dashboard.json → DOM. API routing is still stubs.
 DECISIONS.md         Architecture decisions in force. Read before changing direction.
+OBSIDIAN.md          Wiring the vault to local Ollama — the in-app half and the corpus half.
 
 skills/              8 skill definitions, Four-Part Artifact Architecture.
 context/brand/       10 constants named by the routing table. Unauthored — resolved
@@ -30,6 +31,8 @@ context/domain/      10 reference libraries, 216 lines each.
 vault/               THE SOURCE OF TRUTH. Content MDs; see vault/SCHEMA.md.
 agents/              9 sub-executor definitions.
 tools/bootstrap.sh   First boot: preflight, extract the probe, report what can run.
+tools/vault_rag.py   Indexes a vault into Ollama embeddings and answers across it.
+                     local_rag_orchestration made executable; stdlib only.
 tools/hw/            Gate machinery — evaluate_gate.py mints or denies the compute token,
                      test_gate.py pins its verdicts. verify_compute.sh is generated.
 tools/brush-designer/  Procreate brush generator. Runs standalone today.
@@ -37,6 +40,7 @@ archive/             Indexes the vault for search and the cosmos view.
 ```
 
 **Setting it up on the machine: [BOOT.md](BOOT.md).**
+**Connecting Obsidian and Ollama: [OBSIDIAN.md](OBSIDIAN.md).**
 
 ---
 

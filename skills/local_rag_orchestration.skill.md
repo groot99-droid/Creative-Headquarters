@@ -95,11 +95,31 @@ pct=d["hardware"]["local_llm"]["context_used_pct"]
 print("OK:P4" if pct < 50 else "FAIL:P4 window already %d%% — flush first" % pct)
 PY
 
-# P5 — Vector index exists and is fresher than the corpus
-[ -f state/rag_index/index.faiss ] && \
-[ "$(find ./project/docs ./project/notes -newer state/rag_index/index.faiss -type f 2>/dev/null | wc -l)" -eq 0 ] \
-  && echo "OK:P5" || echo "WARN:P5 reindex required before query"
+# P5 — Vector index exists and is fresher than the corpus.
+#      The corpus is the Obsidian vault (vault/, or whatever --vault was indexed);
+#      v1.x named ./project/docs and ./project/notes, which have never existed here.
+#      The index is stdlib JSON, not a FAISS shard — see the implementation note below.
+python3 tools/vault_rag.py status | grep -qE "index +[0-9]+ chunks" \
+  && (python3 tools/vault_rag.py status | grep -q "changed since" \
+      && echo "WARN:P5 corpus moved ahead of the index — reindex before query" \
+      || echo "OK:P5") \
+  || echo "WARN:P5 no index — python3 tools/vault_rag.py index"
 ```
+
+**Implementation.** `tools/vault_rag.py` is this skill executed: same endpoint
+resolution and WSL rewrite (P2/P2a), same tag verification (P2b), same tier table and
+payload caps (§2), same `<think>` stripping, trace archival, and eviction contract
+(§2 step 8). Run it directly — `status`, `index`, `ask`, `evict` — or follow the steps
+below by hand when a task needs something the CLI does not do. Two deliberate
+deviations from the text above, both recorded here rather than left to be discovered:
+
+- **The index is JSON, not FAISS.** D1 called for a local equivalent of the Pinecone
+  store; a stdlib one that is always present beats a fast one that is missing on first
+  boot. Vectors are normalized float32 packed base64, retrieval is a dot product.
+  At vault scale — a few thousand chunks — the difference is milliseconds.
+- **Rerank is similarity order, not a cross-encoder.** §2 step 4a says "retrieve
+  top-k=8 → rerank to 4"; the CLI takes the top 4 that fit the payload cap. Honest
+  cheap ranking, not a second model held resident on 16 GB.
 
 State verification (agent-level):
 - **V1:** `memory_discipline` context defines what is quotable vs. summarizable from the corpus — load it before writing any answer.

@@ -68,6 +68,18 @@ python3 tools/reconcile_models.py            # report drift
 python3 tools/reconcile_models.py --write    # apply it
 ```
 
+Then index a vault and ask it something:
+
+```bash
+python3 tools/vault_rag.py status
+python3 tools/vault_rag.py index                            # this repo's vault/
+python3 tools/vault_rag.py ask "what did I decide about X"
+```
+
+That is the whole connection from this side. The Obsidian side — which plugin, and
+the `OLLAMA_ORIGINS` setting that plugins fail without — is
+**[OBSIDIAN.md](OBSIDIAN.md)**.
+
 `dashboard.json → hardware.local_llm.tiers` ships **provisional** tags. They are the
 shape of the registry, not an inventory of your machine. The reconciler will not pick a
 model silently — `local_rag_orchestration` P2b fails loudly on a missing tag so that a
