@@ -31,7 +31,7 @@ def warn(msg): WARNS.append(msg)
 
 def load_dashboard():
     try:
-        return json.loads((ROOT / "dashboard.json").read_text())
+        return json.loads((ROOT / "dashboard.json").read_text(encoding="utf-8"))
     except Exception as e:
         fail(f"dashboard.json does not parse: {e}")
         return None
@@ -122,7 +122,7 @@ def check_domain_libraries(d, contexts_on_disk):
 def check_skill_headers(d, roles):
     """Each skill's mandatory_context must name roles that exist in the binding map."""
     for path in sorted((ROOT / "skills").glob("*.skill.md")):
-        m = re.search(r"^mandatory_context:\s*\[(.*?)\]", path.read_text(), re.M)
+        m = re.search(r"^mandatory_context:\s*\[(.*?)\]", path.read_text(encoding="utf-8"), re.M)
         if not m:
             fail(f"{path.name} has no mandatory_context in its routing header")
             continue
@@ -170,7 +170,7 @@ def check_host_portability(d):
         return "\n".join(re.findall(r"^```[a-z]*\n(.*?)^```", text, re.S | re.M))
 
     for path in sorted((ROOT / "skills").glob("*.skill.md")):
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         code = fenced(text)
         m = re.search(r"^host_kinds:\s*\[(.*?)\]", text, re.M)
         if not m:
@@ -206,12 +206,12 @@ def check_extracted_probe():
     extracted = ROOT / "tools" / "hw" / "verify_compute.sh"
     if not extracted.exists():
         return                      # not bootstrapped here; nothing to drift
-    skill = (ROOT / "skills" / "hardware_compute.skill.md").read_text()
+    skill = (ROOT / "skills" / "hardware_compute.skill.md").read_text(encoding="utf-8")
     m = re.search(r"### ARTIFACT A.*?\n```bash\n(.*?)\n```", skill, re.S)
     if not m:
         fail("ARTIFACT A not found in hardware_compute.skill.md")
         return
-    if extracted.read_text().strip() != m.group(1).strip():
+    if extracted.read_text(encoding="utf-8").strip() != m.group(1).strip():
         fail("tools/hw/verify_compute.sh has drifted from ARTIFACT A — edit the skill "
              "file and re-run tools/bootstrap.sh; the extracted copy is not the source")
     else:
@@ -220,7 +220,7 @@ def check_extracted_probe():
 
 def check_router_md(d, roles):
     """Router.md §3 names the gates; the dashboard declares them. Mirrors go stale."""
-    text = (ROOT / "Router.md").read_text()
+    text = (ROOT / "Router.md").read_text(encoding="utf-8")
     for role in roles:
         if f"`{role}`" not in text:
             warn(f"role '{role}' is bound in dashboard.json but never mentioned in Router.md")
@@ -236,7 +236,7 @@ def check_router_md(d, roles):
 
 def check_router_js(d, roles):
     """router.js must not carry a second, divergent copy of the binding map."""
-    text = (ROOT / "router.js").read_text()
+    text = (ROOT / "router.js").read_text(encoding="utf-8")
     if "STATE?.registries?.context_brand_gates" not in text:
         fail("router.js does not read gate state from dashboard.json — it will drift")
     else:
@@ -258,7 +258,7 @@ def check_router_js(d, roles):
             warn(f"gate '{role}' missing from router.js resolveGates table")
 
     # every CSS class router.js emits must exist in the stylesheet
-    css = (ROOT / "control_room.html").read_text()
+    css = (ROOT / "control_room.html").read_text(encoding="utf-8")
     for cls in sorted(set(re.findall(r'"(c-[a-z]+)"', text))):
         if f".{cls}" not in css:
             fail(f"router.js emits .{cls} but control_room.html defines no such class")
@@ -281,7 +281,7 @@ def check_palette_parity(d):
     if not skill.exists():
         fail("skills/css_html_ui.skill.md missing — cannot check token parity")
         return
-    text = skill.read_text()
+    text = skill.read_text(encoding="utf-8")
     want = {}
     for key in ("base", "raise", "panel"):
         m = re.search(r'"bg":\s*\{[^}]*"%s":\s*"(#[0-9A-Fa-f]{6})"' % key, text)
@@ -295,7 +295,7 @@ def check_palette_parity(d):
         warn("could not parse the token dictionary from css_html_ui ARTIFACT A")
         return
 
-    css = (ROOT / "control_room.html").read_text()
+    css = (ROOT / "control_room.html").read_text(encoding="utf-8")
     have = {k: v.upper() for k, v in re.findall(r"--([a-z-]+):\s*(#[0-9A-Fa-f]{6})", css)}
     drift = {k: (v, have.get(k)) for k, v in want.items() if have.get(k) != v}
     if drift:

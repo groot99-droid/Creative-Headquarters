@@ -42,7 +42,7 @@ def endpoint_from_dashboard(d):
 def wsl_gateway():
     """Under WSL2's default NAT, localhost is the VM. The Windows host is the gateway."""
     try:
-        with open("/proc/version") as f:
+        with open("/proc/version", encoding="utf-8") as f:
             if "microsoft" not in f.read().lower():
                 return None
     except OSError:
@@ -81,7 +81,7 @@ def main():
     ap.add_argument("--write", action="store_true", help="apply suggestions to dashboard.json")
     args = ap.parse_args()
 
-    d = json.loads(DASH.read_text())
+    d = json.loads(DASH.read_text(encoding="utf-8"))
     llm = d["hardware"]["local_llm"]
     endpoint = args.endpoint or endpoint_from_dashboard(d)
 
@@ -146,7 +146,7 @@ def main():
             "before any call and fails loudly rather than silently substituting a model, so "
             "re-run this after any `ollama pull` or `ollama rm`."
         )
-        DASH.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+        DASH.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print("  dashboard.json updated — re-run tools/verify_system.py")
     elif changes:
         print("  re-run with --write to apply, or pull the declared tags instead")
