@@ -59,4 +59,49 @@ jobs:
         run: node --check router.js
 
       - name: Dashboard parses
-        run: python3 -c "import json;json.load(open('dashboard.json'));print('dashboard.json ok')"
+        run: python3 -c "import json;json.load(open('dashboard.json',encoding='utf-8'));print('dashboard.json ok')"
+
+      - name: Tools declare their encodings
+        # The studio host is Windows (DECISIONS.md D8), where Python's default file encoding
+        # is the ANSI code page, not UTF-8. dashboard.json, Router.md and the skills all carry
+        # em dashes and section signs, so any read_text/write_text/open without an explicit
+        # encoding either mojibakes them or dies outright -- and it passes on this Linux runner
+        # regardless, which is exactly how it shipped once already.
+        # EncodingWarning (PEP 597) fires on every implicit-encoding call; -W error makes it fatal.
+        env:
+          PYTHONWARNDEFAULTENCODING: "1"
+        run: |
+          python3 -W error::EncodingWarning tools/verify_system.py --quiet
+          python3 -W error::EncodingWarning tools/reconcile_models.py --help > /dev/null
+          python3 -W error::EncodingWarning tools/vault_rag.py --help > /dev/null
+
+      - name: vault_rag core logic
+        # Closes the gap where every other tool in tools/ was smoke-tested and this one was not.
+        # Exercises chunking, the packed-vector round trip and frontmatter parsing without Ollama.
+        env:
+          PYTHONWARNDEFAULTENCODING: "1"
+        run: |
+          python3 -W error::EncodingWarning - <<'EOF'
+          import importlib.util, sys
+          spec = importlib.util.spec_from_file_location("vault_rag", "tools/vault_rag.py")
+          m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+
+          # chunking respects the budget and keeps every paragraph
+          text = "\n\n".join(f"para {i} " + "word " * 200 for i in range(12))
+          chunks = m.chunk(text)
+          assert chunks, "chunk() produced nothing"
+          cap = m.CHUNK_TOKENS * m.CHARS_PER_TOKEN * 1.5
+          assert all(len(c) <= cap for c in chunks), "a chunk blew the size cap"
+
+          # a normalized vector survives the float32+base64 round trip and stays unit length
+          v = m.normalize([0.5, -1.5, 2.0, 0.25])
+          r = list(m.unpack(m.pack(v)))
+          assert abs(m.dot(r, r) - 1.0) < 1e-5, "vector round trip lost normalization"
+
+          # frontmatter is split off, and a note with none is still all body
+          meta, body = m.strip_frontmatter('---\ntitle: A -- B\nkind: copy\n---\nprose here')
+          assert meta["title"] == "A -- B" and body.strip() == "prose here", (meta, body)
+          assert m.strip_frontmatter("no frontmatter")[1] == "no frontmatter"
+
+          print("vault_rag core logic ok")
+          EOF

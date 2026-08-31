@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-vault_rag.py — connect an Obsidian vault to local Ollama.
+vault_rag.py -- connect an Obsidian vault to local Ollama.
 
 This is the local implementation the archive has been missing (DECISIONS.md D1:
 "graph_store.py (Neo4j) and vector_store.py (Pinecone) need local equivalents").
-It is the executable counterpart to skills/local_rag_orchestration.skill.md — same
-endpoint resolution, same token budget law, same eviction contract — runnable by
+It is the executable counterpart to skills/local_rag_orchestration.skill.md -- same
+endpoint resolution, same token budget law, same eviction contract -- runnable by
 hand without a router turn.
 
     python3 tools/vault_rag.py status
@@ -22,11 +22,11 @@ whichever vault the current index was built from, so it takes no --vault of its 
 Nothing leaves the machine. Embeddings and answers are produced by the Ollama
 process on this laptop; the vault is read, never written.
 
-Stdlib only — no numpy, no faiss. On a vault of a few thousand chunks a pure-Python
+Stdlib only -- no numpy, no faiss. On a vault of a few thousand chunks a pure-Python
 dot product over normalized vectors costs milliseconds, and a dependency that has to
 be installed is a dependency that will be missing on first boot.
 
-Exit codes: 0 ok · 1 problem with the index or the answer · 2 endpoint unreachable.
+Exit codes: 0 ok | 1 problem with the index or the answer | 2 endpoint unreachable.
 """
 
 import argparse
@@ -43,6 +43,15 @@ from array import array
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Never die on the console's encoding. This tool prints the vault's own titles and paths,
+# which carry em dashes and worse; a legacy Windows console (cp437) cannot encode them, and
+# a UnicodeEncodeError after the model has already produced the answer throws away the work.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, OSError):
+        pass  # not a reconfigurable stream (piped, redirected, or an older wrapper)
+
 ROOT = Path(__file__).resolve().parent.parent
 DASH = ROOT / "dashboard.json"
 STATE = ROOT / "state"
@@ -50,14 +59,14 @@ INDEX_DIR = STATE / "rag_index"
 INDEX_FILE = INDEX_DIR / "index.json"
 TRACE_DIR = STATE / "rag_traces"
 
-# Chunking, per skill §2 step 3. Tokens are estimated as chars/4 throughout — the
+# Chunking, per skill section 2 step 3. Tokens are estimated as chars/4 throughout -- the
 # same heuristic the skill's FLUSH_SELFCHECK uses, and close enough for budgeting.
 CHARS_PER_TOKEN = 4
 CHUNK_TOKENS = 800
 OVERLAP_TOKENS = 120
 CHECKPOINT_EVERY = 20  # CHECKPOINT-F1: persist a shard every N chunks
 
-# Retrieval payload ceilings per tier, from the skill's §2 table.
+# Retrieval payload ceilings per tier, from the skill's section 2 table.
 TIER_LIMITS = {
     "sm": {"num_ctx": 8192, "payload_tokens": 3000, "num_predict": 800},
     "md": {"num_ctx": 4096, "payload_tokens": 1200, "num_predict": 600},
@@ -69,7 +78,7 @@ TIER_LIMITS = {
 def wsl_gateway():
     """Under WSL2's default NAT, localhost is the VM. The Windows host is the gateway."""
     try:
-        with open("/proc/version") as f:
+        with open("/proc/version", encoding="utf-8") as f:
             if "microsoft" not in f.read().lower():
                 return None
     except OSError:
@@ -103,11 +112,11 @@ def fetch_tags(endpoint):
 
 
 def resolve_endpoint(override=None):
-    """dashboard.json is the source of truth for the endpoint, and it does move (skill §1 P2).
+    """dashboard.json is the source of truth for the endpoint, and it does move (skill section 1 P2).
 
     Returns (endpoint, served_model_names). Exits 2 if nothing answers.
     """
-    d = json.loads(DASH.read_text())
+    d = json.loads(DASH.read_text(encoding="utf-8"))
     endpoint = override or d["hardware"]["local_llm"]["endpoint"]
 
     served = fetch_tags(endpoint)
@@ -116,7 +125,7 @@ def resolve_endpoint(override=None):
         if gw:
             alt = re.sub(r"//[^:/]*", f"//{gw}", endpoint)
             if fetch_tags(alt) is not None:
-                print(f"  note: reachable at {alt}, not {endpoint} — from WSL, "
+                print(f"  note: reachable at {alt}, not {endpoint} -- from WSL, "
                       f"localhost is the VM", file=sys.stderr)
                 endpoint, served = alt, fetch_tags(alt)
 
@@ -125,13 +134,13 @@ def resolve_endpoint(override=None):
               f"  Start it (`ollama serve`, or the tray app on Windows), or pass "
               f"--endpoint.\n"
               f"  From WSL2 the Windows side needs OLLAMA_HOST=0.0.0.0 and an inbound "
-              f"rule for 11434 — see BOOT.md §2.", file=sys.stderr)
+              f"rule for 11434 -- see BOOT.md section 2.", file=sys.stderr)
         sys.exit(2)
     return endpoint, [m["name"] for m in served]
 
 
 def require_model(tag, served, what):
-    """Verify the resolved tag is actually served (skill §1 P2b).
+    """Verify the resolved tag is actually served (skill section 1 P2b).
 
     Matches on family, so llama3.1:8b is satisfied by llama3.1:8b-instruct-q4_K_M.
     Fails loudly rather than substituting: a wrong model answering in place of the
@@ -148,7 +157,7 @@ def require_model(tag, served, what):
 
 
 def evict(endpoint, model):
-    """Release a resident model (skill §2 step 8, the single-host law).
+    """Release a resident model (skill section 2 step 8, the single-host law).
 
     On this machine a resident model holds gigabytes the next Blender or Photoshop
     job is about to be denied for. Handing back with a model still loaded is a
@@ -189,8 +198,8 @@ def vault_files(vault: Path):
     """Every markdown note, minus scaffolding.
 
     Directories prefixed `_` are ignored by ingest (vault/README.md), as are the
-    vault's own docs. Everything else — including a plain writing vault with no
-    Content MD frontmatter at all — is corpus.
+    vault's own docs. Everything else -- including a plain writing vault with no
+    Content MD frontmatter at all -- is corpus.
     """
     out = []
     for f in sorted(vault.rglob("*.md")):
@@ -250,7 +259,7 @@ def load_index():
     if not INDEX_FILE.exists():
         return None
     try:
-        return json.loads(INDEX_FILE.read_text())
+        return json.loads(INDEX_FILE.read_text(encoding="utf-8"))
     except ValueError:
         return None
 
@@ -258,7 +267,7 @@ def load_index():
 def save_index(idx):
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     tmp = INDEX_FILE.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(idx, ensure_ascii=False))
+    tmp.write_text(json.dumps(idx, ensure_ascii=False), encoding="utf-8")
     tmp.replace(INDEX_FILE)  # atomic: a half-written index is worse than none
 
 
@@ -269,7 +278,7 @@ def cmd_index(args):
         return 1
 
     endpoint, served = resolve_endpoint(args.endpoint)
-    d = json.loads(DASH.read_text())
+    d = json.loads(DASH.read_text(encoding="utf-8"))
     embed_model = args.embed_model or d["hardware"]["local_llm"]["embed_model"]
     require_model(embed_model, served, "embedding model")
 
@@ -321,7 +330,7 @@ def cmd_index(args):
                 save_index({"vault": str(vault), "embed_model": embed_model,
                             "built": datetime.now(timezone.utc).isoformat(),
                             "partial": True, "chunks": chunks})
-                print(f"  partial index saved ({len(chunks)} chunks) — re-run to resume",
+                print(f"  partial index saved ({len(chunks)} chunks) -- re-run to resume",
                       file=sys.stderr)
                 return 1
 
@@ -333,14 +342,14 @@ def cmd_index(args):
             seq += 1
             n_embedded += 1
 
-            # CHECKPOINT-F1 — persist the shard, do not hold the whole corpus in
+            # CHECKPOINT-F1 -- persist the shard, do not hold the whole corpus in
             # memory waiting for a clean finish that may not come.
             if n_embedded % CHECKPOINT_EVERY == 0:
                 save_index({"vault": str(vault), "embed_model": embed_model,
                             "built": datetime.now(timezone.utc).isoformat(),
                             "partial": True, "chunks": chunks})
                 if sys.stdout.isatty():
-                    print(f"\r  embedding… {n_embedded} new chunks", end="", flush=True)
+                    print(f"\r  embedding... {n_embedded} new chunks", end="", flush=True)
 
     save_index({
         "vault": str(vault), "embed_model": embed_model,
@@ -362,7 +371,7 @@ def cmd_index(args):
 
 QUERY_SUBPROMPT = """\
 You are answering from the studio's private corpus. Use ONLY the retrieval block \
-below; if it does not contain the answer, say so plainly — do not fill gaps from \
+below; if it does not contain the answer, say so plainly -- do not fill gaps from \
 general knowledge.
 Cite chunk ids in square brackets like [c_0412] after each claim.
 Question: {question}
@@ -375,13 +384,13 @@ Answer in at most {max_words} words. Put your final answer after the line 'ANSWE
 def cmd_ask(args):
     idx = load_index()
     if not idx or not idx.get("chunks"):
-        print("  no index yet — run: python3 tools/vault_rag.py index", file=sys.stderr)
+        print("  no index yet -- run: python3 tools/vault_rag.py index", file=sys.stderr)
         return 1
     if idx.get("partial"):
         print("  warning: index is partial, a previous run did not finish", file=sys.stderr)
 
     endpoint, served = resolve_endpoint(args.endpoint)
-    d = json.loads(DASH.read_text())
+    d = json.loads(DASH.read_text(encoding="utf-8"))
     llm = d["hardware"]["local_llm"]
     tier = args.tier
     model = args.model or llm["tiers"][tier]["model"]
@@ -403,7 +412,7 @@ def cmd_ask(args):
     evict(endpoint, embed_model)  # never hold both models resident on 16 GB
 
     # 2. Retrieve top-k, then trim to the tier's payload cap. Scores are similarity
-    #    order, not a cross-encoder rerank — the ranking is honest about being cheap.
+    #    order, not a cross-encoder rerank -- the ranking is honest about being cheap.
     scored = sorted(
         ((dot(qv, unpack(c["vec"])), c) for c in idx["chunks"]),
         key=lambda s: s[0], reverse=True,
@@ -425,12 +434,12 @@ def cmd_ask(args):
         kept = [(best[0], dict(best[1], text=best[1]["text"][:cap]))]
 
     retrieval = "\n\n".join(
-        f"[{c['id']}] ({c['title']} — {c['file']})\n{c['text']}" for _, c in kept
+        f"[{c['id']}] ({c['title']} -- {c['file']})\n{c['text']}" for _, c in kept
     )
     prompt = QUERY_SUBPROMPT.format(question=args.question, retrieval=retrieval,
                                     max_words=args.max_words)
 
-    # 3. Generate. No system field, temperature 0.6, keep_alive 5m — skill ARTIFACT A.
+    # 3. Generate. No system field, temperature 0.6, keep_alive 5m -- skill ARTIFACT A.
     try:
         r = post(endpoint, "/api/generate", {
             "model": model, "prompt": prompt, "stream": False, "keep_alive": "5m",
@@ -447,14 +456,14 @@ def cmd_ask(args):
     raw = r.get("response", "")
 
     # 4. Strip <think>. A reasoning model's trace is archived for audit and never
-    #    shown or re-fed — it is the largest thing in the window and the least useful.
+    #    shown or re-fed -- it is the largest thing in the window and the least useful.
     think = "\n".join(re.findall(r"<think>(.*?)</think>", raw, re.S))
     answer = re.sub(r"<think>.*?</think>", "", raw, flags=re.S).strip()
     answer = re.sub(r"^ANSWER:\s*", "", answer, flags=re.M).strip()
     if think:
         TRACE_DIR.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        (TRACE_DIR / f"{stamp}.txt").write_text(think)
+        (TRACE_DIR / f"{stamp}.txt").write_text(think, encoding="utf-8")
 
     used = r.get("prompt_eval_count") or len(prompt) // CHARS_PER_TOKEN
     pct = round(100 * used / limits["num_ctx"])
@@ -471,17 +480,17 @@ def cmd_ask(args):
         print("  sources")
         for s, c in kept:
             print(f"    [{c['id']}] {s:.3f}  {c['file']}")
-        print(f"\n  {model} · tier {tier} · window {pct}% of {limits['num_ctx']}"
-              + (f" · think trace archived" if think else ""))
+        print(f"\n  {model} | tier {tier} | window {pct}% of {limits['num_ctx']}"
+              + (f" | think trace archived" if think else ""))
         if pct >= 60:
-            print("  window past 60% — the skill's session ceiling. Next question "
+            print("  window past 60% -- the skill's session ceiling. Next question "
                   "should start clean.")
 
-    # 5. Write the window reading back to the dashboard (skill §2 step 6).
+    # 5. Write the window reading back to the dashboard (skill section 2 step 6).
     if args.write_dashboard:
         llm["context_used_pct"] = pct
         llm["loaded_tier"] = tier
-        DASH.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+        DASH.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print("  dashboard.json updated (context_used_pct, loaded_tier)")
     return 0
 
@@ -490,7 +499,7 @@ def cmd_ask(args):
 
 def cmd_status(args):
     endpoint, served = resolve_endpoint(args.endpoint)
-    d = json.loads(DASH.read_text())
+    d = json.loads(DASH.read_text(encoding="utf-8"))
     llm = d["hardware"]["local_llm"]
 
     print(f"  endpoint  {endpoint}  ok")
@@ -499,15 +508,15 @@ def cmd_status(args):
         fam = spec["model"].split(":")[0]
         hit = [n for n in served if n.split(":")[0] == fam]
         print(f"  tier {tier}    {spec['model']:<24} "
-              + (f"ok ({hit[0]})" if hit else "MISSING — ollama pull " + spec["model"]))
+              + (f"ok ({hit[0]})" if hit else "MISSING -- ollama pull " + spec["model"]))
     em = llm["embed_model"]
     print(f"  embed     {em:<24} "
           + ("ok" if any(n.split(":")[0] == em.split(":")[0] for n in served)
-             else "MISSING — ollama pull " + em))
+             else "MISSING -- ollama pull " + em))
 
     idx = load_index()
     if not idx:
-        print(f"  index     none — run: python3 tools/vault_rag.py index")
+        print(f"  index     none -- run: python3 tools/vault_rag.py index")
         return 0
 
     vault = Path(idx["vault"])
@@ -520,8 +529,8 @@ def cmd_status(args):
         stale = [str(f.relative_to(vault)) for f in vault_files(vault)
                  if f.stat().st_mtime > built]
         if stale:
-            print(f"            {len(stale)} note(s) changed since — reindex: "
-                  f"{', '.join(stale[:3])}{'…' if len(stale) > 3 else ''}")
+            print(f"            {len(stale)} note(s) changed since -- reindex: "
+                  f"{', '.join(stale[:3])}{'...' if len(stale) > 3 else ''}")
         else:
             print("            fresh")
     else:
@@ -531,7 +540,7 @@ def cmd_status(args):
 
 def cmd_evict(args):
     endpoint, served = resolve_endpoint(args.endpoint)
-    d = json.loads(DASH.read_text())
+    d = json.loads(DASH.read_text(encoding="utf-8"))
     llm = d["hardware"]["local_llm"]
     for tag in [t["model"] for t in llm["tiers"].values()] + [llm["embed_model"]]:
         evict(endpoint, tag)
@@ -561,7 +570,7 @@ def main():
     s.add_argument("--model", help="override the tier's model")
     s.add_argument("--top-k", type=int, default=8, help="candidates retrieved")
     s.add_argument("--rerank-to", type=int, default=4,
-                   help="candidates that survive into the prompt (skill §2 step 4a)")
+                   help="candidates that survive into the prompt (skill section 2 step 4a)")
     s.add_argument("--max-words", type=int, default=250)
     s.add_argument("--json", action="store_true")
     s.add_argument("--write-dashboard", action="store_true",
