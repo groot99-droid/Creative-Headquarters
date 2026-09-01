@@ -192,7 +192,8 @@ def check_host_portability(d):
             if re.search(r'^\s*(?:scn|scene)\.cycles\.device\s*=\s*"GPU"', code, re.M):
                 fail(f"{path.name} sets cycles.device=GPU, but hardware.gpu.cuda is false — "
                      f"the render would fall back to CPU silently")
-    ok(f"all 8 skills declare host_kinds within {sorted(supported)} and invoke no macOS-only binary")
+    n = len(list((ROOT / "skills").glob("*.skill.md")))
+    ok(f"all {n} skills declare host_kinds within {sorted(supported)} and invoke no macOS-only binary")
 
 
 def check_extracted_probe():

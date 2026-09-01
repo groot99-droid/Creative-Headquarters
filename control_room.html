@@ -7,28 +7,42 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-  /* ── Design tokens (mirrors dashboard.json → active_variables.master_palette) ── */
+  /* ── Design tokens ─────────────────────────────────────────────────────────
+     Projection of css_html_ui.skill.md ARTIFACT A. Edit the skill file, never
+     this block — verify_system.py -> check_palette_parity fails the build if the
+     two drift. Every value below clears the contrast_floor recorded in ARTIFACT A.
+     (DECISIONS.md § D9 addendum — 2026-08-31 retheme.) */
   :root {
-    --bg:        #0B0E17;
-    --bg-raise:  #121627;
-    --bg-panel:  #161B30;
-    --line:      #232A45;
-    --ink:       #C9CEDB;
-    --ink-dim:   #6E7690;
+    --bg:        #05070E;
+    --bg-raise:  #121829;
+    --bg-panel:  #1B2238;
+    --line:      #3D4668;
+    --ink:       #D8DDEA;
+    --ink-dim:   #9AA4C0;   /* 6.34:1 on panel — was 3.78:1, below AA */
     --amber:     #F2A33C;   /* awaiting / warning */
     --cyan:      #3EE0CF;   /* active / nominal   */
-    --alert:     #E84D6F;   /* blocked / error    */
-    --queued:    #4A5273;   /* queued / idle      */
+    --alert:     #FF6B87;   /* blocked / error    */
+    --queued:    #8E93E0;   /* queued / idle — 5.55:1, was 2.23:1 */
     --font-disp: 'Chakra Petch', sans-serif;
     --font-mono: 'IBM Plex Mono', monospace;
+    /* ARTIFACT A elevation.* + focus.* — previously hardcoded at each call site */
+    --glow-nominal: 0 0 10px var(--cyan);
+    --glow-waiting: 0 0 10px var(--amber);
+    --glow-blocked: 0 0 10px var(--alert);
+    --focus-ring:   2px solid var(--cyan);
+    --focus-offset: 2px;
   }
+  /* ARTIFACT A focus.ring applies to every control, not just .chip. */
+  :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
   * { box-sizing: border-box; margin: 0; }
   html, body { background: var(--bg); color: var(--ink); font-family: var(--font-mono); font-size: 13px; }
   body {
     min-height: 100vh;
+    /* Derived from the accent tokens rather than restating them as literal rgba —
+       a hardcoded copy silently survives a palette change. */
     background-image:
-      radial-gradient(1200px 500px at 70% -10%, rgba(62,224,207,0.06), transparent 60%),
-      radial-gradient(900px 400px at 10% 110%, rgba(242,163,60,0.05), transparent 60%);
+      radial-gradient(1200px 500px at 70% -10%, color-mix(in srgb, var(--cyan) 6%, transparent), transparent 60%),
+      radial-gradient(900px 400px at 10% 110%, color-mix(in srgb, var(--amber) 5%, transparent), transparent 60%);
     padding: 20px;
   }
 
@@ -38,7 +52,9 @@
     max-width: 1440px;
     margin: 0 auto;
     gap: 14px;
-    grid-template-columns: repeat(12, 1fr);
+    /* minmax(0,·) not 1fr: a bare 1fr track has min-width:auto, so any child
+       wider than its share silently widens the whole grid instead of shrinking. */
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     grid-template-areas:
       "hd hd hd hd hd hd hd hd hd hd hd hd"
       "pl pl pl pl pl pl pl pl pl pl pl pl"
@@ -50,10 +66,16 @@
     .grid { grid-template-areas: "hd hd hd hd hd hd hd hd hd hd hd hd" "pl pl pl pl pl pl pl pl pl pl pl pl" "vr vr vr vr vr vr hw hw hw hw hw hw" "lg lg lg lg lg lg lg lg lg lg lg lg" "sk sk sk sk sk sk sk sk sk sk sk sk" "cx cx cx cx cx cx cx cx cx cx cx cx"; }
   }
   @media (max-width: 640px) {
-    .grid { grid-template-columns: 1fr; grid-template-areas: "hd" "pl" "vr" "hw" "lg" "sk" "cx"; }
+    .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hd" "pl" "vr" "hw" "lg" "sk" "cx"; }
+  }
+  /* Once the grid collapses, .log is content-height rather than row-stretched,
+     so flex:1 resolves to "as tall as the content". Cap it again there. */
+  @media (max-width: 980px) {
+    .log ul { max-height: 420px; }
   }
 
-  .panel { grid-area: var(--area); background: var(--bg-panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
+  .panel { grid-area: var(--area); background: var(--bg-panel); border: 1px solid var(--line);
+           border-radius: 6px; padding: 16px 18px; min-width: 0; }
   .panel h2 {
     font-family: var(--font-disp); font-size: 12px; font-weight: 600;
     letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-dim);
@@ -65,8 +87,8 @@
   header { --area: hd; grid-area: hd; display: flex; align-items: center; gap: 22px;
     background: var(--bg-raise); border: 1px solid var(--line); border-radius: 6px; padding: 16px 22px; flex-wrap: wrap; }
   .brand { font-family: var(--font-disp); font-weight: 700; font-size: 20px; letter-spacing: 0.14em; }
-  .brand em { font-style: normal; color: var(--cyan); }
-  .hd-stat { display: flex; flex-direction: column; gap: 3px; }
+  .brand .sep { color: var(--cyan); }
+  .hd-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .hd-stat .k { font-size: 10px; letter-spacing: 0.18em; color: var(--ink-dim); text-transform: uppercase; }
   .hd-stat .v { font-family: var(--font-disp); font-size: 14px; font-weight: 600; }
   .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px;
@@ -74,29 +96,42 @@
   .lamp.warn  { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
   .lamp.alert { background: var(--alert); box-shadow: 0 0 10px var(--alert); }
   @keyframes pulse { 50% { opacity: 0.45; } }
-  @media (prefers-reduced-motion: reduce) { .lamp { animation: none; } }
+  /* ARTIFACT A: "all motion.* tokens null out under prefers-reduced-motion".
+     The lamp was covered; the .bar/.track width transitions were not. */
+  @media (prefers-reduced-motion: reduce) {
+    .lamp { animation: none; }
+    .station .bar i, .meter .track i { transition: none; }
+  }
   .spacer { flex: 1; }
   #heartbeat { color: var(--ink-dim); font-size: 11px; }
 
   /* ── Pipeline transit rail (signature element) ── */
   .pipeline { --area: pl; }
-  .rail { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; padding-top: 8px; }
+  /* Six stations need ~96px each to stay readable. Above ~600px of panel they share
+     the width evenly; below it the rail scrolls inside itself rather than pushing
+     the page sideways. (ux: Horizontal Scroll — content must fit the viewport.) */
+  .rail { position: relative; display: grid; grid-auto-flow: column;
+          grid-auto-columns: minmax(112px, 1fr); gap: 0; padding-top: 8px;
+          overflow-x: auto; overscroll-behavior-x: contain; }
+  .rail:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
   .rail::before { content: ""; position: absolute; left: 4%; right: 4%; top: 27px; height: 2px; background: var(--line); }
   .station { position: relative; text-align: center; padding: 0 8px 4px; }
   .station .node { position: relative; z-index: 1; width: 16px; height: 16px; margin: 12px auto 10px;
     border-radius: 50%; border: 2px solid var(--queued); background: var(--bg-panel); }
-  .station .name { font-family: var(--font-disp); font-size: 12px; font-weight: 600; line-height: 1.3; }
-  .station .meta { font-size: 10px; color: var(--ink-dim); margin-top: 3px; letter-spacing: 0.05em; }
+  .station .name { font-family: var(--font-disp); font-size: 12px; font-weight: 600;
+                   line-height: 1.3; min-inline-size: 0; overflow-wrap: anywhere; }
+  .station .meta { font-size: 10px; color: var(--ink-dim); margin-top: 3px;
+                   letter-spacing: 0.05em; min-inline-size: 0; overflow-wrap: anywhere; }
   .station .bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
   .station .bar i { display: block; height: 100%; width: 0%; background: var(--queued); transition: width .6s ease; }
 
   .station.s-complete .node        { border-color: var(--cyan); background: var(--cyan); }
   .station.s-complete .bar i       { background: var(--cyan); }
   .station.s-in_progress .node,
-  .station.s-compositing .node     { border-color: var(--cyan); box-shadow: 0 0 12px rgba(62,224,207,.5); }
+  .station.s-compositing .node     { border-color: var(--cyan); box-shadow: var(--glow-nominal); }
   .station.s-in_progress .bar i,
   .station.s-compositing .bar i    { background: var(--cyan); }
-  .station.s-awaiting_render .node { border-color: var(--amber); box-shadow: 0 0 12px rgba(242,163,60,.5); }
+  .station.s-awaiting_render .node { border-color: var(--amber); box-shadow: var(--glow-waiting); }
   .station.s-awaiting_render .bar i{ background: var(--amber); }
   .station.s-blocked .node         { border-color: var(--alert); background: var(--alert); }
   .station.s-blocked .bar i        { background: var(--alert); }
@@ -109,9 +144,16 @@
 
   /* ── Variables / Hardware / Log / Skills ── */
   .vars { --area: vr; } .hw { --area: hw; } .log { --area: lg; } .skills { --area: sk; } .ctx { --area: cx; }
+  /* .log spans three grid rows, so the panel is ~1100px tall. Capping the list at
+     340px left 724px of the panel empty while the list scrolled 800px of content.
+     Flex column + flex:1 makes the list occupy the height the panel already has. */
+  .log { display: flex; flex-direction: column; }
   .kv { display: grid; grid-template-columns: minmax(120px, 40%) 1fr; row-gap: 9px; column-gap: 12px; }
   .kv .k { color: var(--ink-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; align-self: center; }
-  .kv .v { font-size: 12.5px; word-break: break-all; }
+  /* break-all splits inside words ("Windo|ws 11"). overflow-wrap only breaks a
+     token that cannot fit, and min-inline-size:0 lets the grid child actually
+     shrink instead of forcing the break. (ux: Long Token Wrapping) */
+  .kv .v { font-size: 12.5px; min-inline-size: 0; overflow-wrap: anywhere; }
   .swatches { display: flex; gap: 6px; }
   .swatches span { width: 22px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
 
@@ -121,7 +163,10 @@
   .meter .track i { display: block; height: 100%; background: var(--cyan); width: 0%; transition: width .6s ease; }
   .meter.warn .track i { background: var(--amber); }
 
-  .log ul { list-style: none; max-height: 340px; overflow-y: auto; }
+  /* A scrollable region is only keyboard-operable if it can take focus — see the
+     tabindex/role on #log in the markup. The ring makes that focus visible. */
+  .log ul { list-style: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .log ul:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
   .log li { padding: 8px 0; border-bottom: 1px dashed var(--line); display: grid; gap: 2px; }
   .log li:last-child { border-bottom: 0; }
   .log .ev { font-family: var(--font-disp); font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; }
@@ -133,7 +178,12 @@
      declarations chips render as UA-default black Arial on a dark panel (~1.1:1). */
   .chip { border: 1px solid var(--line); background: var(--bg-raise); border-radius: 4px;
     color: var(--ink); font-family: var(--font-mono); text-align: left;
-    padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+    /* A flex item defaults to min-width:auto, so a long skill id pushed the chip past
+       the viewport instead of wrapping inside it. */
+    min-width: 0; max-width: 100%; }
+  .chip > span { min-inline-size: 0; overflow-wrap: anywhere; }
+  .chip .dot { flex: none; }
   .chip:hover { border-color: var(--cyan); }
   .chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); }
@@ -147,9 +197,9 @@
   .ctx-row.on .dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
   .ctx-row.missing .dot { background: var(--alert); box-shadow: 0 0 8px var(--alert); }
   .ctx-row.missing .f { color: var(--alert); }
-  .ctx-row .f { font-size: 11.5px; color: var(--ink-dim); word-break: break-all; }
+  .ctx-row .f { font-size: 11.5px; color: var(--ink-dim); min-inline-size: 0; overflow-wrap: anywhere; }
   .ctx-row.on .f { color: var(--ink); }
-  .ctx-row .r { font-size: 10.5px; letter-spacing: 0.04em; word-break: break-all; }
+  .ctx-row .r { font-size: 10.5px; letter-spacing: 0.04em; min-inline-size: 0; overflow-wrap: anywhere; }
 
   .offline-note { display: none; margin-top: 10px; color: var(--amber); font-size: 11px; }
   body.offline .offline-note { display: block; }
@@ -159,7 +209,7 @@
   <main class="grid">
 
     <header>
-      <div class="brand">STUDIO<em>//</em>HEADLESS OS</div>
+      <div class="brand">STUDIO<span class="sep" aria-hidden="true">//</span>HEADLESS OS</div>
       <div class="hd-stat"><span class="k">System</span><span class="v"><span class="lamp" id="lamp"></span><span id="sys-state">—</span></span></div>
       <div class="hd-stat"><span class="k">Mode</span><span class="v" id="sys-mode">—</span></div>
       <div class="hd-stat"><span class="k">Active skill</span><span class="v c-cyan" id="sys-skill">—</span></div>
@@ -170,7 +220,8 @@
 
     <section class="panel pipeline" aria-label="Pipeline phases">
       <h2>Pipeline Rail <span class="tick" id="phase-count"></span></h2>
-      <div class="rail" id="rail"><!-- stations injected by router.js --></div>
+      <div class="rail" id="rail" tabindex="0" role="group"
+           aria-label="Pipeline phases, scrollable"><!-- stations injected by router.js --></div>
       <p class="offline-note">⚠ dashboard.json unreachable — showing last known state. If opened via file://, run a local server (e.g. <code>python3 -m http.server</code>).</p>
     </section>
 
@@ -187,7 +238,7 @@
 
     <section class="panel log" aria-label="Event log">
       <h2>Event Log <span class="tick">router writeback</span></h2>
-      <ul id="log"></ul>
+      <ul id="log" tabindex="0" role="region" aria-label="Event log entries, scrollable"></ul>
     </section>
 
     <section class="panel skills" aria-label="Skill registry">

@@ -331,3 +331,141 @@ file, and nothing executed it. First boot needed that to be a mechanism.
   for is now a memory requirement, not a preference.
 - Premiere has no COM automation on Windows. `adobe_suite_uxp` ARTIFACT C still assumes
   the CEP/UXP panel endpoint it assumed on macOS, and that path is unverified here.
+
+---
+
+## D9 — ui-ux-pro-max is vendored as a routed skill, and authors three brand gates
+
+**Chosen:** vendor the upstream corpus and search engine into
+`tools/ui-ux-pro-max/`, write `skills/ui_ux_intelligence.skill.md` in the Four-Part
+Artifact Architecture, and use `css_html_ui` ARTIFACT A to author three of the ten
+brand gates.
+
+**Rejected — a `context/domain/` library.** The corpus is thirteen CSVs behind a
+BM25 engine; flattening it into an eleventh 216-line reference file would make it
+worse at the one thing it is good at, and domain libraries never satisfy a gate
+(§3). The CSVs *are* the corpus; the skill is its retrieval interface.
+
+**Rejected — referencing the payload in place** on the authoring machine. That
+hardcodes an absolute path into a routed skill and makes it unroutable anywhere
+else. D2 drew the same line for the brush designer: a capability, not a bookmark.
+
+**Why it routes cleanly.** Verified by running it from `tools/`:
+
+| Requirement | Status |
+|---|---|
+| Headless entry point | `search.py`, argparse CLI, `--json` on every mode |
+| Dependencies | Python 3 standard library only |
+| Network | none — the corpus is local CSV |
+| `host_kinds` | `[windows, wsl, linux]`; no host bridge, no macOS binary |
+| Adapter needed | **none** — unlike D2, the seam was already there |
+
+### The token-authority split
+
+`css_html_ui` ARTIFACT A calls itself the "ABSOLUTE SOURCE OF TRUTH" for tokens and
+`check_palette_parity` enforces it against `control_room.html`. ui-ux-pro-max
+generates a *new* palette and type pairing per product. Left unscoped, the second
+would license drift in the first.
+
+**Two authorities, split by consumer:**
+
+- **Studio surfaces** (`control_room.html`, `hub/`) — ARTIFACT A governs.
+  `ui_ux_intelligence` is the declared *upstream generator*, and proposes only.
+  ARTIFACT A's own `mutation_policy` (`operator-approval only; agent proposes,
+  never commits`) governs the three gates too. The four-step approval loop is the
+  skill's ARTIFACT D.
+- **Product and client work** — `ui_ux_intelligence` is the sole authority, through
+  a per-project `MASTER.md`. The studio palette and Chakra Petch do not travel to a
+  client project.
+
+### The three gates
+
+`visual_identity`, `typography_system`, and `color_science` are now authored, and
+were **transcribed from ARTIFACT A, not generated**. `context/brand/README.md` is
+right that brand constants cannot be generated — they encode taste. But these three
+were never actually missing: they were decided, in force, and machine-verified,
+just buried in one skill file where the Router could not see them. Promoting them
+is bookkeeping, not invention, and each file's §0 PROVENANCE block says so.
+
+**L0 now means authored, not complete.** Two of the three declare their own gaps —
+`visual_identity` §7 (imagery motifs, framing, texture) and `color_science` §5
+(working space, LUTs, grading). Both are real holes that the corpus cannot fill:
+`colors.csv` holds product palettes, not colour-management policy. A route needing
+those constraints treats them as unresolved even though the file loads at L0.
+Router.md §3 now says this explicitly, because "the file exists, so the question is
+answered" is the cheapest way to lose the guarantee the gates exist for.
+
+**Consequence:** the system moved `BLOCKED` → `DEGRADED`. `ui_ux_intelligence` is
+the first skill whose entire mandatory context resolves at L0 — the first route in
+this repository that runs with no provisional constraint. `css_html_ui` still parks
+on `brand_voice`, the last of its three.
+
+**Not yet done.**
+
+- No product-work design system has been generated end to end, so the ARTIFACT B
+  handoff shape is asserted against the engine's JSON output, not proven against
+  what `css_html_ui` actually consumes.
+- `VENDOR.md` records a payload sha256; nothing verifies it on a run. A
+  `check_vendor_hash` in `verify_system.py` would close that.
+- `ui_ux_intelligence` has no pipeline phase. It routes on trigger; `ph_06` still
+  lists `css_html_ui` alone.
+
+### D9 addendum — the first regeneration ran, and the palette was failing WCAG
+
+`ui_ux_intelligence` was exercised as the upstream generator for the studio's own
+tokens (ARTIFACT D), operator-authorised. Two things worth recording.
+
+**The generator misrouted twice before it was useful.** `"creative studio control
+room dashboard dark instrumentation"` resolved to *Photography Studio* — "studio"
+dominated the match — and returned a scroll-storytelling pattern for a portfolio
+site. The narrower rewrite `"internal operations monitoring dashboard telemetry"`
+resolved to *Smart Home/IoT Dashboard*: still an imperfect label, but dark-tech
+ground, a status accent, monospace-family type and a dense spacing scale, all of
+which fit. That is the Query Contract working as designed — verify the category,
+retry once, and treat the result as evidence rather than instruction. The final
+palette is not the generator's output; it is the studio's identity with the
+generator's evidence applied to the values that were broken.
+
+**The old palette failed WCAG in two places, and the brand gate had papered over
+one of them.** Measured:
+
+| token | before | after | |
+|---|---|---|---|
+| `accent.queued` | 2.23:1 | 5.55:1 | below the **3.0** non-text floor — a queued status dot was non-compliant, not just hard to read |
+| `ink.dim` | 3.78:1 | 6.34:1 | below **4.5** while carrying 10–11px labels |
+| `accent.alert` | 4.64:1 | 5.78:1 | passed, tightened |
+| `line` | 1.21:1 | 1.71:1 | container border; 1.4.11 does not bind, raised for legibility |
+
+`color_science.context.md` §4 had claimed ink cleared AA and hedged that dim ink
+was "structure, not reading matter". That hedge was covering a real failure. The
+section now states the measured floor, and ARTIFACT A carries a `contrast_floor`
+block so a future value that regresses either number is rejected rather than
+re-hedged.
+
+**Four layout bugs surfaced only by rendering the page**, none visible in the
+source review that preceded it:
+
+- `word-break: break-all` on prose split words mid-token — "Windo|ws 11",
+  "pressure g|reen", "next se|ssion". The corpus names this exactly
+  (*Long Token Wrapping*): use `overflow-wrap: anywhere` and let grid children
+  shrink; never `break-all` on prose.
+- The Event Log panel spans three grid rows (~1100px) but its list was capped at
+  340px — **724px of dead space** while the list scrolled 800px of content.
+- **Mobile horizontal overflow**: 682px of content in a 375px viewport. Grid tracks
+  default to `min-width: auto`, so each station's 101px min-content forced `.rail`
+  to 597px, and that one child stretched every panel to 635px. Fixed with
+  `minmax(0, 1fr)` tracks, `min-width: 0` panels, and giving the rail its own
+  scroll container — six 62px stations would be unreadable, so shrinking alone was
+  the wrong answer.
+- Two scrollable regions (`#log`, `#rail`) were not keyboard-reachable (WCAG 2.1.1).
+
+Also folded in: `:focus-visible` is now global rather than `.chip`-only, the four
+hardcoded `rgba()` glows became ARTIFACT A `elevation.*` tokens, and
+`prefers-reduced-motion` now nulls the bar/track transitions it had been missing.
+
+**Verified** at 375 / 768 / 1265px: zero horizontal overflow at every breakpoint,
+`check_palette_parity` green, `verify_system.py` exit 0.
+
+**Not done.** The retheme was measured and rendered, not reviewed by a person on
+the target display. Contrast was computed against WCAG 2.1 ratios; APCA, which
+models dark-mode legibility better, was not consulted.

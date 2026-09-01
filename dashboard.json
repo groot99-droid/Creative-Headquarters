@@ -4,10 +4,10 @@
     "system_name": "STUDIO HEADLESS OS",
     "operator": "Studio Lead",
     "generated": "2026-07-01T00:00:00Z",
-    "file_count_target": 22
+    "file_count_target": 23
   },
   "system_status": {
-    "state": "BLOCKED",
+    "state": "DEGRADED",
     "state_enum": [
       "NOMINAL",
       "DEGRADED",
@@ -25,7 +25,7 @@
     "intercept_violations_24h": 0,
     "active_skill": null,
     "context_loaded": [],
-    "blocked_reason": "Every §3 context resolves to L3 UNRESOLVED: no context/brand/*.context.md authored, and vault/ holds no Content MDs to recall (L1) or derive from (L2 needs >=3). Per §5 the Router parks in every mode, autonomous included."
+    "blocked_reason": "Partially resolved. visual_identity, typography_system and color_science are authored (L0), so ui_ux_intelligence routes fully. The other seven gates are unauthored; vault/ holds 1 Content MD, which is below the >=3 L2 needs, so routes depending on them still park at L3 per §5. color_science answers palette but not working space/LUT/grading — see its §5 before routing adobe_suite_uxp."
   },
   "hardware": {
     "host": "Lenovo Yoga Book 9i",
@@ -216,9 +216,14 @@
         "file": "skills/hardware_compute.skill.md",
         "domain": "Compute verification & allocation",
         "status": "ready"
+      },
+      {
+        "file": "skills/ui_ux_intelligence.skill.md",
+        "domain": "Design-system generation & UX audit",
+        "status": "ready"
       }
     ],
-    "context_note": "Router.md §3 gates resolve to context/brand/<name>.context.md at L0. None is authored, and vault/ has no Content MDs, so L1/L2 cannot resolve either — every route parks at L3 per §5. That is correct behavior, not a bug. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
+    "context_note": "Router.md §3 gates resolve to context/brand/<name>.context.md at L0. Three are authored — visual_identity, typography_system, color_science — transcribed from css_html_ui ARTIFACT A, which was already in force and is machine-verified by check_palette_parity (DECISIONS.md D9). The other seven are unauthored and still park at L3 per §5. An authored gate is not the same as a complete one: visual_identity §7 and color_science §5 name what they do not answer, and a route needing those constraints treats them as unresolved. context/domain/ holds reference libraries: retrievable material that never satisfies a mandatory gate. See context/brand/README.md.",
     "context_brand_gates": [
       {
         "role": "visual_identity",
@@ -226,26 +231,29 @@
         "gates_skills": [
           "adobe_firefly",
           "higgsfield_api",
-          "css_html_ui"
+          "css_html_ui",
+          "ui_ux_intelligence"
         ],
-        "authored": false
+        "authored": true
       },
       {
         "role": "color_science",
         "path": "context/brand/color_science.context.md",
         "gates_skills": [
           "adobe_firefly",
-          "adobe_suite_uxp"
+          "adobe_suite_uxp",
+          "ui_ux_intelligence"
         ],
-        "authored": false
+        "authored": true
       },
       {
         "role": "typography_system",
         "path": "context/brand/typography_system.context.md",
         "gates_skills": [
-          "css_html_ui"
+          "css_html_ui",
+          "ui_ux_intelligence"
         ],
-        "authored": false
+        "authored": true
       },
       {
         "role": "motion_language",
@@ -323,6 +331,24 @@
     ]
   },
   "event_log": [
+    {
+      "ts": "2026-08-31T16:45:00Z",
+      "actor": "ui_ux_intelligence",
+      "event": "TOKENS_COMMITTED",
+      "detail": "Control room rethemed under operator authorisation (ARTIFACT D loop). Two WCAG failures fixed: accent.queued 2.23:1 -> 5.55:1, ink.dim 3.78:1 -> 6.34:1. Four layout bugs fixed: break-all mid-word wrapping, 724px dead space in the log panel, mobile horizontal overflow (682px in a 375px viewport), unreachable scroll regions. contrast_floor recorded in ARTIFACT A. check_palette_parity green. content_md: vault/studio-os/ui/ui-ux-intelligence-integration.md"
+    },
+    {
+      "ts": "2026-08-31T14:20:00Z",
+      "actor": "router",
+      "event": "GATE_AUTHORED",
+      "detail": "visual_identity, typography_system, color_science promoted L3 → L0. Transcribed from css_html_ui ARTIFACT A, not generated. Partial by declaration: visual_identity §7 (imagery motifs) and color_science §5 (working space, LUTs, grading) name their own gaps. content_md: vault/studio-os/ui/ui-ux-intelligence-integration.md"
+    },
+    {
+      "ts": "2026-08-31T14:05:00Z",
+      "actor": "router",
+      "event": "SKILL_REGISTERED",
+      "detail": "skills/ui_ux_intelligence.skill.md registered (9/9). Payload vendored to tools/ui-ux-pro-max/, stdlib-only, offline. Upstream generator for the three gates above under operator approval; sole token authority for product work. DECISIONS.md D9"
+    },
     {
       "ts": "2026-08-23T18:30:00Z",
       "actor": "router",

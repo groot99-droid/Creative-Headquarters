@@ -1,0 +1,5 @@
+# The vendored ui-ux-pro-max payload is kept byte-identical to upstream (LF) so the
+# sha256 in tools/ui-ux-pro-max/VENDOR.md stays comparable against an upstream
+# checkout. Without this, git normalises it to CRLF on a Windows checkout and the
+# "no local edits" guarantee becomes unverifiable by inspection.
+tools/ui-ux-pro-max/** -text

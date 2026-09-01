@@ -36,7 +36,7 @@ Creative-Headquarters/
 ├── control_room.html        ← Human UI (renders dashboard.json)
 ├── router.js                ← UI logic bridge (fetch → DOM → API routing stubs)
 ├── DECISIONS.md             ← Architecture decisions in force
-├── /skills/                 ← 8 executable skill files (Four-Part Artifact Architecture)
+├── /skills/                 ← 9 executable skill files (Four-Part Artifact Architecture)
 │   ├── higgsfield_api.skill.md
 │   ├── suno_audio.skill.md
 │   ├── adobe_firefly.skill.md
@@ -44,17 +44,20 @@ Creative-Headquarters/
 │   ├── blender_python.skill.md
 │   ├── css_html_ui.skill.md
 │   ├── local_rag_orchestration.skill.md
-│   └── hardware_compute.skill.md
+│   ├── hardware_compute.skill.md
+│   └── ui_ux_intelligence.skill.md
 ├── /context/
-│   ├── /brand/              ← 10 gate files named in §3. NOT YET AUTHORED — see brand/README.md
+│   ├── /brand/              ← 10 gate files named in §3. 3 authored, 7 pending — see brand/README.md
 │   │   └── README.md            Absence is survivable: §5's ladder resolves them from
 │   │                            the vault. Authoring one promotes it to L0.
 │   └── /domain/             ← 10 reference libraries (worldbuilding, cinematography, …)
 │                                Retrievable material. NOT substitutes for /brand/.
 ├── /agents/                 ← 9 sub-executor definitions (debugger, code-reviewer, …)
 ├── /tools/
-│   └── /brush-designer/     ← Procreate brush generator. DOM-free core in editor/ + generators/
-│                                + export/; UI in ui/ + panels/. Not yet routed — see DECISIONS.md.
+│   ├── /brush-designer/     ← Procreate brush generator. DOM-free core in editor/ + generators/
+│   │                            + export/; UI in ui/ + panels/. Not yet routed — see DECISIONS.md.
+│   └── /ui-ux-pro-max/      ← Vendored corpus + search engine for ui_ux_intelligence.
+│                                Stdlib Python 3, offline. Provenance in VENDOR.md.
 ├── /vault/                  ← THE SOURCE OF TRUTH. Obsidian vault of Content MDs.
 │   ├── SCHEMA.md                Content MD spec — read before writing one
 │   └── _templates/              Obsidian template
@@ -113,12 +116,13 @@ Scan the user request for intent verbs and domain nouns:
 | "UI / dashboard / component / landing page / DOM" | `css_html_ui.skill.md` |
 | "search my docs / recall / summarize corpus / RAG / local model" | `local_rag_orchestration.skill.md` |
 | "render locally / GPU / heavy compute / batch process / thermals / on battery" | `hardware_compute.skill.md` |
+| "design system / palette / font pairing / style direction / UX review / accessibility audit" | `ui_ux_intelligence.skill.md` |
 
 ### TRIGGER B — ASSET & STATE TRIGGER
 Independently of what the user *says*, inspect what the task *touches*:
 
 1. **File-type detection** on any referenced/attached asset:
-   `.mp4/.mov` → higgsfield or adobe_suite · `.wav/.mp3/.stem` → suno · `.psd/.aep/.prproj/.jsx` → adobe_suite_uxp · `.blend/.fbx/.obj` → blender_python · `.html/.css/.jsx(web)` → css_html_ui · `.pdf/.md corpus` → local_rag
+   `.mp4/.mov` → higgsfield or adobe_suite · `.wav/.mp3/.stem` → suno · `.psd/.aep/.prproj/.jsx` → adobe_suite_uxp · `.blend/.fbx/.obj` → blender_python · `.html/.css/.jsx(web)` → css_html_ui · `.pdf/.md corpus` → local_rag · `design-system/*/MASTER.md`, `tokens/design_tokens.json` → ui_ux_intelligence
 2. **Dashboard-state detection:** read `dashboard.json → pipeline.phases[]`. Any phase with status `awaiting_render`, `compositing`, `queued`, or `blocked` that matches the task domain forces that skill into the candidate set — even if the user never named it.
 
 ### THE INTERCEPT (mandatory sequence when any trigger fires)
@@ -153,17 +157,27 @@ Independently of what the user *says*, inspect what the task *touches*:
 | `css_html_ui` | `typography_system`, `visual_identity`, `brand_voice` | — |
 | `local_rag_orchestration` | `memory_discipline` | `pipeline_ethics` |
 | `hardware_compute` | `pipeline_ethics`, `render_philosophy` | — |
+| `ui_ux_intelligence` | `visual_identity`, `typography_system`, `color_science` | — |
 
 **Path resolution:** every name in the two right-hand columns resolves to
 `context/brand/<name>.context.md` when authored — level L0 in §5. These are brand
 constants; the files in `context/domain/` have different names and a different job
 and never satisfy a mandatory slot.
 
-None of the ten is authored yet. That no longer halts the Router: §5's ladder
-resolves an unauthored constant from the vault's accumulated Content MDs (L1/L2),
-and only a constant with no authored file *and* no precedent (L3) stops a task.
-Authoring a file promotes that constant to L0 permanently. See
+Three of the ten are authored — `visual_identity`, `typography_system`, and
+`color_science`, transcribed from `css_html_ui` ARTIFACT A rather than generated
+(DECISIONS.md § D9). The remaining seven are not. That does not halt the Router:
+§5's ladder resolves an unauthored constant from the vault's accumulated Content
+MDs (L1/L2), and only a constant with no authored file *and* no precedent (L3)
+stops a task. Authoring a file promotes that constant to L0 permanently. See
 `context/brand/README.md`.
+
+**L0 means authored, not complete.** An authored gate that declares its own gaps —
+`visual_identity` §7 (imagery motifs), `color_science` §5 (working space, LUTs,
+grading) — resolves the constants it states and no others. A route needing a
+constraint the file explicitly does not answer treats that constraint as
+unresolved and says so in its attestation. Reading "the file exists" as "the
+question is answered" is the failure mode this paragraph exists to prevent.
 
 Multi-skill tasks: union all mandatory context sets, load once, deduplicate.
 

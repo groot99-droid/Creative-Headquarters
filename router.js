@@ -302,6 +302,7 @@ function resolveGates(skillFile) {
     "skills/css_html_ui.skill.md":             ["typography_system", "visual_identity", "brand_voice"],
     "skills/local_rag_orchestration.skill.md": ["memory_discipline"],
     "skills/hardware_compute.skill.md":        ["pipeline_ethics", "render_philosophy"],
+    "skills/ui_ux_intelligence.skill.md":      ["visual_identity", "typography_system", "color_science"],
   };
   return table[skillFile] || [];
 }

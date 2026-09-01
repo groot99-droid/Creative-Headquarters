@@ -91,12 +91,20 @@ State verification (agent-level):
 {
   "$schema": "studio-os/design-tokens/v1",
   "mutation_policy": "operator-approval only; agent proposes, never commits token changes",
+  "contrast_floor": {
+    "rule": "every ink.* and accent.* value clears 4.5:1 on all three bg.* grounds; every
+             accent used as a status dot, node, or progress fill clears 3.0:1 on its own ground",
+    "verified": "2026-08-31 — ink.dim 6.34:1, accent.queued 5.55:1 worst-case on bg.panel",
+    "why": "the pre-2026-08-31 palette failed twice: accent.queued was 2.23:1 (below the 3.0
+            non-text floor, so a queued status dot was non-compliant) and ink.dim was 3.78:1
+            while carrying 10-11px labels. A new value that regresses either is rejected."
+  },
 
   "color": {
-    "bg":     { "base": "#0B0E17", "raise": "#121627", "panel": "#161B30" },
-    "line":   { "base": "#232A45" },
-    "ink":    { "base": "#C9CEDB", "dim": "#6E7690" },
-    "accent": { "amber": "#F2A33C", "cyan": "#3EE0CF", "alert": "#E84D6F", "queued": "#4A5273" }
+    "bg":     { "base": "#05070E", "raise": "#121829", "panel": "#1B2238" },
+    "line":   { "base": "#3D4668" },
+    "ink":    { "base": "#D8DDEA", "dim": "#9AA4C0" },
+    "accent": { "amber": "#F2A33C", "cyan": "#3EE0CF", "alert": "#FF6B87", "queued": "#8E93E0" }
   },
 
   "semantic": {
@@ -144,9 +152,9 @@ State verification (agent-level):
 ```css
 /* studio-os tokens.css — GENERATED FROM design_tokens.json. Edit the JSON, never this file. */
 :root {
-  --bg: #0B0E17; --bg-raise: #121627; --bg-panel: #161B30;
-  --line: #232A45; --ink: #C9CEDB; --ink-dim: #6E7690;
-  --amber: #F2A33C; --cyan: #3EE0CF; --alert: #E84D6F; --queued: #4A5273;
+  --bg: #05070E; --bg-raise: #121829; --bg-panel: #1B2238;
+  --line: #3D4668; --ink: #D8DDEA; --ink-dim: #9AA4C0;
+  --amber: #F2A33C; --cyan: #3EE0CF; --alert: #FF6B87; --queued: #8E93E0;
 
   --font-disp: 'Chakra Petch', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
@@ -166,7 +174,13 @@ State verification (agent-level):
   --m-bar-fill: width .6s ease;
   --focus-ring: 2px solid var(--cyan); --focus-offset: 2px;
 }
-@media (prefers-reduced-motion: reduce) { :root { --m-bar-fill: none; } }
+@media (prefers-reduced-motion: reduce) {
+  :root { --m-bar-fill: none; }
+  /* A consumer that hardcodes `transition: width .6s` instead of var(--m-bar-fill)
+     silently escapes this rule. Belt and braces: kill the transition outright. */
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+                           transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
 :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 ```
 
