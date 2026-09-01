@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>THE HUB — Studio Headless OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+
+    <header class="topbar">
+      <div class="brand">STUDIO<em>//</em>HEADLESS OS <span class="sub">— The Hub</span></div>
+      <nav class="tabs" id="tabs" aria-label="Hub sections">
+        <button class="tab" data-tab="library" aria-current="page">Library</button>
+        <button class="tab" data-tab="ask">Ask</button>
+        <button class="tab" data-tab="designer">Designer Pro</button>
+        <button class="tab" data-tab="brushes">Brushes</button>
+        <button class="tab" data-tab="pipeline">Pipeline</button>
+      </nav>
+      <div class="spacer"></div>
+      <button class="chip" id="settingsBtn" type="button">
+        <span class="dot" id="connDot"></span>
+        <span id="connLabel">Ollama —</span>
+      </button>
+    </header>
+
+    <p class="offline-note" id="offlineNote">
+      Fetched from file:// — manifest and vault reads need an HTTP origin. Run
+      <code>python3 -m http.server</code> from the repo root and open this page via
+      <code>http://localhost:8000/hub/</code>.
+    </p>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" class="settings-form">
+        <h2>Ollama connection</h2>
+        <label>Endpoint
+          <input type="text" id="endpointInput" placeholder="http://localhost:11434" />
+        </label>
+        <div class="row">
+          <button type="button" id="testConnBtn" class="btn">Test connection</button>
+          <span id="testConnResult" class="hint"></span>
+        </div>
+        <label>Tier
+          <select id="tierSelect">
+            <option value="sm">sm — llama3.1:8b (everyday)</option>
+            <option value="md">md — mistral-nemo:12b (AC + quiet desktop only)</option>
+          </select>
+        </label>
+        <p class="hint">
+          If the test fails while <code>curl</code> from a terminal works, Ollama is
+          rejecting this page's origin. See <a href="../OBSIDIAN.md" target="_blank">OBSIDIAN.md § A2</a>
+          — <code>setx OLLAMA_ORIGINS</code> needs this origin added, then a full restart
+          of Ollama.
+        </p>
+        <div class="row">
+          <button type="button" id="evictBtn" class="btn">Evict resident model</button>
+          <button value="close" class="btn btn-primary">Done</button>
+        </div>
+      </form>
+    </dialog>
+
+    <main>
+      <!-- ── LIBRARY ────────────────────────────────────────────────── -->
+      <section class="panel-view" id="view-library">
+        <div class="toolbar">
+          <input type="search" id="librarySearch" placeholder="Search title, tag, project…" />
+          <select id="libraryKind"><option value="">All kinds</option></select>
+          <select id="libraryStatus"><option value="">All statuses</option></select>
+          <select id="librarySort">
+            <option value="updated">Sort: recently updated</option>
+            <option value="title">Sort: title</option>
+          </select>
+          <button class="btn" id="libraryRefresh" type="button">Refresh manifest</button>
+        </div>
+        <p class="hint">
+          One card per note in whichever vault was last indexed — currently
+          <code id="libraryVaultName">…</code>. The authored overview is pulled from the note
+          itself; <strong>AI overview</strong> is generated on demand by the local model
+          reading the note in full — nothing is summarized until you ask.
+          Manifest is a snapshot: after adding or editing notes, run
+          <code>python3 tools/vault_manifest.py --vault &lt;path&gt;</code> and hit Refresh.
+        </p>
+        <div class="grid-cards" id="libraryGrid" aria-live="polite"></div>
+        <p class="empty-state" id="libraryEmpty" hidden></p>
+      </section>
+
+      <!-- ── ASK ────────────────────────────────────────────────────── -->
+      <section class="panel-view" id="view-ask" hidden>
+        <div class="ask-layout">
+          <div class="ask-main">
+            <div class="chat-log" id="chatLog" aria-live="polite">
+              <p class="hint">
+                Ask a question and it is answered only from your vault's notes — the model is
+                told to say so, not guess, when the corpus does not contain the answer.
+                Chunk ids in the answer trace back to the sources listed underneath it.
+              </p>
+            </div>
+            <form id="askForm" class="ask-form">
+              <textarea id="askInput" rows="2" placeholder="What did I decide about…" required></textarea>
+              <button class="btn btn-primary" type="submit" id="askSubmit">Ask</button>
+            </form>
+          </div>
+          <aside class="ask-side">
+            <h2>Context index</h2>
+            <div class="kv" id="indexStats">
+              <div class="k">Status</div><div class="v" id="idxStatus">not built</div>
+              <div class="k">Chunks</div><div class="v" id="idxChunks">0</div>
+              <div class="k">Notes</div><div class="v" id="idxNotes">0</div>
+            </div>
+            <button class="btn" id="buildIndexBtn" type="button">Build / refresh index</button>
+            <div class="progress" id="idxProgress" hidden><i></i></div>
+            <details class="advanced">
+              <summary>Advanced</summary>
+              <label>Top-k retrieved <input type="number" id="optTopK" value="12" min="1" max="50" /></label>
+              <label>Chunks used <input type="number" id="optRerankTo" value="4" min="1" max="12" /></label>
+              <label>Max answer words <input type="number" id="optMaxWords" value="220" min="40" max="800" /></label>
+            </details>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ── DESIGNER PRO ───────────────────────────────────────────── -->
+      <section class="panel-view" id="view-designer" hidden>
+        <p class="hint">
+          Style generation and mixing, grounded in <code>tools/ui-ux-pro-max/</code> —
+          the corpus behind <code>skills/ui_ux_intelligence.skill.md</code>: 79 searchable
+          styles, 192 product palettes, 74 font pairings, 119 UX guidelines. Pick rows as
+          ingredients, then blend them with the local model.
+        </p>
+
+        <div class="banner banner-warn">
+          <strong>Two layers, and only one of them is a model.</strong> The corpus rows and
+          the conflict checks are read straight from the CSVs — deterministic, no inference.
+          The blended direction is written by Ollama on this machine from those rows only,
+          and is a <em>proposal</em>: it never becomes a token. Retrieval here is token
+          overlap, not the CLI's BM25 (<code>search.py</code>), so when the two disagree the
+          CLI wins. Nothing is written to <code>ARTIFACT A</code>; studio tokens stay
+          operator-approval only.
+        </div>
+
+        <section class="panel" aria-label="Style brief">
+          <h2>Brief</h2>
+          <label class="dp-field">
+            <span class="dp-label">What is being designed</span>
+            <input type="text" id="dpBrief" autocomplete="off"
+                   placeholder="e.g. dense fintech dashboard, trustworthy, dark-first" />
+          </label>
+        </section>
+
+        <div class="dp-split">
+          <section class="panel" aria-label="Corpus ingredients">
+            <h2>Corpus <span class="tick" id="dpCount">—</span></h2>
+            <div class="dp-controls">
+              <label class="dp-field">
+                <span class="dp-label">Search</span>
+                <input type="search" id="dpQuery" placeholder="e.g. glassmorphism dark"
+                       autocomplete="off" spellcheck="false" />
+              </label>
+              <div class="dp-domains" id="dpDomains" role="group" aria-label="Corpus domain"></div>
+            </div>
+            <div class="dp-results" id="dpResults" role="region"
+                 aria-live="polite" aria-label="Corpus rows, scrollable" tabindex="0"></div>
+          </section>
+
+          <section class="panel" aria-label="Mix">
+            <h2>Mix <span class="tick" id="dpMixCount">empty</span></h2>
+            <ul class="dp-mix" id="dpMixList"></ul>
+            <div class="dp-checks" id="dpChecks" role="status" aria-live="polite"></div>
+            <div class="dp-actions">
+              <button class="btn" id="dpGenerate" type="button" disabled>Blend into a direction</button>
+              <button class="btn btn-quiet" id="dpClear" type="button">Clear mix</button>
+            </div>
+            <div class="dp-out" id="dpOut" hidden role="region"
+                 aria-live="polite" aria-label="Generated direction"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ── BRUSHES ────────────────────────────────────────────────── -->
+      <section class="panel-view" id="view-brushes" hidden>
+        <p class="hint">
+          <code>tools/brush-designer/</code> — shape and grain generators, stroke preview,
+          real <code>.brush</code> / <code>.brushset</code> export. Runs standalone; nothing
+          here talks to it besides embedding the page.
+          <a class="btn-link" href="../tools/brush-designer/index.html" target="_blank" rel="noopener">Open in a new tab ↗</a>
+        </p>
+        <iframe class="brush-frame" id="brushFrame" title="Procreate Brush Designer"
+                src="../tools/brush-designer/index.html" loading="lazy"></iframe>
+      </section>
+
+      <!-- ── PIPELINE ───────────────────────────────────────────────── -->
+      <section class="panel-view" id="view-pipeline" hidden>
+        <div class="banner banner-warn">
+          <strong>Not connected.</strong> This tab is a static preview of the pipeline layout
+          — it does not read <code>dashboard.json</code> and nothing here starts a routed
+          task. The live version of this view is <a href="../control_room.html" target="_blank" rel="noopener">control_room.html</a>,
+          which polls the dashboard today; wiring this tab to it is future work
+          (see README.md → "What does not run yet").
+        </div>
+        <section class="panel pipeline-preview" aria-label="Pipeline preview">
+          <h2>Pipeline Rail <span class="tick">example data, not live</span></h2>
+          <div class="rail" id="previewRail"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="ollama.js"></script>
+  <script src="app.js"></script>
+  <script src="designer-pro.js"></script>
+</body>
+</html>

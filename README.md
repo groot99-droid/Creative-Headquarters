@@ -24,18 +24,29 @@ router.js            Polls dashboard.json → DOM. API routing is still stubs.
 DECISIONS.md         Architecture decisions in force. Read before changing direction.
 OBSIDIAN.md          Wiring the vault to local Ollama — the in-app half and the corpus half.
 
-skills/              8 skill definitions, Four-Part Artifact Architecture.
-context/brand/       10 constants named by the routing table. Unauthored — resolved
-                     from the vault meanwhile (Router §5).
+skills/              9 skill definitions, Four-Part Artifact Architecture.
+context/brand/       10 constants named by the routing table. 3 authored
+                     (visual_identity, typography_system, color_science —
+                     transcribed from css_html_ui ARTIFACT A, § D9); the other
+                     7 resolve from the vault meanwhile (Router §5).
 context/domain/      10 reference libraries, 216 lines each.
 vault/               THE SOURCE OF TRUTH. Content MDs; see vault/SCHEMA.md.
 agents/              9 sub-executor definitions.
 tools/bootstrap.sh   First boot: preflight, extract the probe, report what can run.
 tools/vault_rag.py   Indexes a vault into Ollama embeddings and answers across it.
                      local_rag_orchestration made executable; stdlib only.
+tools/vault_manifest.py  Writes state/vault_manifest.json — the small, embedding-free
+                     note index hub/index.html's Library tab reads.
 tools/hw/            Gate machinery — evaluate_gate.py mints or denies the compute token,
                      test_gate.py pins its verdicts. verify_compute.sh is generated.
 tools/brush-designer/  Procreate brush generator. Runs standalone today.
+tools/ui-ux-pro-max/   Vendored design corpus + search engine behind
+                     ui_ux_intelligence: 79 styles, 192 palettes, 74 font
+                     pairings, 119 UX guidelines, 22 stacks. Offline, stdlib
+                     only. Provenance and re-vendor steps in VENDOR.md.
+hub/                 Human-facing tool: library of AI-written note overviews, a direct
+                     Ollama Q&A over the vault, the brush designer embedded, and a static
+                     (unwired) pipeline preview. See "What runs today" below.
 archive/             Indexes the vault for search and the cosmos view.
 ```
 
@@ -45,6 +56,39 @@ archive/             Indexes the vault for search and the cosmos view.
 ---
 
 ## What runs today
+
+**`hub/`** — open `hub/index.html` from a static server (see below). Four tabs:
+
+- **Library** — one card per Content MD in `vault/`, built from
+  `state/vault_manifest.json` (regenerate with `python3 tools/vault_manifest.py`
+  after editing notes). Each card shows the note's authored `## Overview`
+  as-is, plus an on-demand **AI overview** the local model writes from the
+  full note text — nothing is summarized until you click.
+- **Ask** — direct Q&A against Ollama, grounded in the vault. Builds a
+  browser-side embedding index over the manifest's notes (same chunking,
+  retrieval, and "answer only from the retrieval block" prompt as
+  `tools/vault_rag.py ask`, run client-side against `/api/embeddings` and
+  `/api/generate`) and cites the chunks it drew on.
+  See [OBSIDIAN.md](OBSIDIAN.md) if the connection fails — same
+  `OLLAMA_ORIGINS` step as the in-app plugin, one more origin to allow.
+- **Designer Pro** — style generation and mixing. Pick rows from the vendored
+  ui-ux-pro-max CSVs (`tools/ui-ux-pro-max/data/`) as ingredients across
+  domains — a style, a palette, a font pairing — and blend them into one
+  direction with the local model. Two layers, and only one is a model: the rows
+  and the **conflict checks** (deprecation, mode clashes, `risk:high`,
+  complexity stacking) are read straight from corpus fields and need no Ollama;
+  the blended direction is written by Ollama from those rows only, cites each
+  ingredient, and is a **proposal that never becomes a token**. Retrieval is
+  token overlap, not the CLI's BM25 — when they disagree, `search.py` wins.
+  Expect 1–2 minutes per blend: 8B CPU inference, no CUDA on this machine.
+- **Brushes** — embeds `tools/brush-designer/index.html`.
+- **Pipeline** — a static preview of the pipeline rail's layout. Deliberately
+  **not** wired to `dashboard.json` or router state yet; `control_room.html`
+  remains the live view until that connection is built.
+
+Needs an HTTP origin, not `file://` — `.claude/launch.json` has a
+`hub-static-server` entry (`python3 -m http.server 8347`), or run your own
+and open `http://localhost:<port>/hub/`.
 
 **`tools/brush-designer/`** — open `index.html` from a static server. Generates
 shapes and grains on canvas, previews strokes, exports `.brush` and `.brushset`
